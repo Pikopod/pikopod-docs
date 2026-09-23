@@ -1,0 +1,137 @@
+---
+title: Severity
+description: One function maps the shape of a change onto ERR, WARN or INFO. No check carries a hand-assigned severity.
+---
+
+Severity in `spec-diff` is **derived by law**. One function maps the shape of a change onto a level, so "breaking" means the same thing on every endpoint and on every provider, and changing the rule changes every verdict at once. A test over the whole catalogue checks that every emitted level is the law's answer, and a check that is not in the inventory panics at its emit site.
+
+## The inputs
+
+| Input | Values | Meaning |
+|---|---|---|
+| **Effect** | `Narrows`, `Widens`, `Incomparable`, `Unchanged` | How the set of payloads the contract admits moved. |
+| **Direction** | `Request`, `Response` | Which side of the exchange changed. |
+| **Scope** | `Guaranteed`, `Optional` | Whether the changed element was part of the guarantee (required, always present) or optional. |
+| **Guards** | `DeprecatedHonored`, `Tolerated`, `Uncertain` | A sunset the old spec announced; a widening consumers tolerate by convention; a claim whose provenance is extracted or low-confidence. |
+
+## The law
+
+| Effect | Direction | Scope | Level | Guards |
+|---|---|---|---|---|
+| Unchanged | any | any | `INFO` | |
+| Incomparable | any | any | `ERR` | |
+| Narrows | Request | Guaranteed | `ERR` | `DeprecatedHonored` → `WARN` |
+| Narrows | Request | Optional | `WARN` | |
+| Narrows | Response | Guaranteed | `ERR` | `DeprecatedHonored` → `WARN`; `Tolerated` → `INFO` |
+| Narrows | Response | Optional | `WARN` | `Tolerated` → `INFO` |
+| Widens | Request | any | `INFO` | |
+| Widens | Response | Guaranteed | `WARN` | `Tolerated` → `INFO` |
+| Widens | Response | Optional | `INFO` | |
+
+One clause applies after the table: if the claim is `Uncertain` and the level came out `ERR`, it becomes `WARN`. An extracted or low-confidence fact can never page as an error.
+
+In words: narrowing what the caller may send, or what the caller is guaranteed to get, is breaking. Widening is informational, except widening a response the consumer may switch on exhaustively, which is a warning. Anything incomparable is breaking. An announced sunset softens a break to a warning. A convention consumers already tolerate (ignoring unknown fields, an error status vanishing) softens it to info. An uncertain fact is never an error.
+
+## Why a removed response field is WARN
+
+Withdrawing a presence guarantee on a response field, whether by removing the field or by making it optional, is `WARN` in the declared diff. The response set grew while a guarantee was withdrawn, and consumers ignore unknown fields by dominant convention. The two spellings of the same withdrawal (`response-required-property-removed` and `response-property-became-optional`) carry the same level by a test.
+
+Inside `pikopod up`, traffic evidence raises it: if the agent has seen consumers receive that field in at least 98% of samples, the declared finding becomes `ERR` with the note that consumers receive this field today. See [Spec watch](/observe/spec-watch).
+
+## The check inventory
+
+Fifty-five check IDs, sixty-one variants. The level column is the law's answer with the static `Tolerated` guard only. Emit sites may add `DeprecatedHonored` or `Uncertain` at runtime.
+
+### Endpoints and auth
+
+| Check | Effect | Dir | Scope | Level |
+|---|---|---|---|---|
+| `endpoint-removed` | Narrows | request | guaranteed | `ERR` (`WARN` if deprecated first) |
+| `endpoint-added` | Widens | request | guaranteed | `INFO` |
+| `endpoint-deprecated` | Unchanged | request | guaranteed | `INFO` |
+| `endpoint-security-added` | Narrows | request | guaranteed | `ERR` |
+| `endpoint-security-scheme-removed` | Narrows | request | guaranteed | `ERR` |
+| `endpoint-security-removed` | Widens | request | guaranteed | `INFO` |
+| `auth-scheme-removed` | Narrows | request | guaranteed | `ERR` |
+| `auth-scheme-changed` | Incomparable | request | guaranteed | `ERR` |
+| `auth-scheme-added` | Widens | request | guaranteed | `INFO` |
+
+### Parameters and request bodies
+
+| Check | Effect | Dir | Scope | Level |
+|---|---|---|---|---|
+| `param-removed` | Narrows | request | optional | `WARN` |
+| `param-renamed` | Unchanged | request | guaranteed | `INFO` |
+| `param-became-required` | Narrows | request | guaranteed | `ERR` |
+| `param-became-optional` | Widens | request | guaranteed | `INFO` |
+| `param-added-required` | Narrows | request | guaranteed | `ERR` |
+| `param-added-optional` | Widens | request | optional | `INFO` |
+| `request-body-added-required` | Narrows | request | guaranteed | `ERR` |
+| `request-body-added-optional` | Widens | request | optional | `INFO` |
+| `request-body-removed` (required) | Narrows | request | guaranteed | `ERR` |
+| `request-body-removed` (optional) | Narrows | request | optional | `WARN` |
+| `request-body-became-required` | Narrows | request | guaranteed | `ERR` |
+| `request-body-became-optional` | Widens | request | guaranteed | `INFO` |
+| `request-media-type-removed` | Narrows | request | guaranteed | `ERR` |
+| `request-media-type-added` | Widens | request | guaranteed | `INFO` |
+
+### Responses
+
+| Check | Effect | Dir | Scope | Level |
+|---|---|---|---|---|
+| `response-status-removed` (2xx or default) | Narrows | response | guaranteed | `ERR` |
+| `response-status-removed` (error status) | Narrows | response | guaranteed | `INFO` (tolerated) |
+| `response-status-added` | Widens | response | guaranteed | `WARN` |
+| `response-media-type-removed` | Narrows | response | guaranteed | `ERR` |
+| `response-media-type-added` | Widens | response | guaranteed | `INFO` (tolerated) |
+
+### Schemas
+
+Applies to request and response schemas, walked to a depth of 32. `allOf` is flattened. `oneOf` and `anyOf` members are not diffed pairwise, because their identity is positional and a reorder would flood false findings. Only presence, kind and count of variants are compared.
+
+| Check | Effect | Dir | Scope | Level |
+|---|---|---|---|---|
+| `schema-restructured` | Incomparable | either | guaranteed | `ERR` |
+| `request-variant-removed` | Narrows | request | guaranteed | `ERR` |
+| `response-variant-removed` | Narrows | response | guaranteed | `INFO` (tolerated) |
+| `request-variant-added` | Widens | request | guaranteed | `INFO` |
+| `response-variant-added` | Widens | response | guaranteed | `WARN` |
+| `request-type-changed` (incomparable) | Incomparable | request | guaranteed | `ERR` |
+| `request-type-changed` (`number` → `integer`) | Narrows | request | guaranteed | `ERR` |
+| `request-type-changed` (`integer` → `number`) | Widens | request | guaranteed | `INFO` |
+| `response-type-changed` (incomparable) | Incomparable | response | guaranteed | `ERR` |
+| `response-type-changed` (`number` → `integer`) | Narrows | response | guaranteed | `INFO` (tolerated) |
+| `response-type-changed` (`integer` → `number`) | Widens | response | guaranteed | `WARN` |
+| `request-nullable-added` | Widens | request | guaranteed | `INFO` |
+| `response-nullable-added` | Widens | response | guaranteed | `WARN` |
+| `request-nullable-removed` | Narrows | request | guaranteed | `ERR` |
+| `response-nullable-removed` | Narrows | response | guaranteed | `INFO` (tolerated) |
+| `request-enum-closed` | Narrows | request | guaranteed | `ERR` |
+| `response-enum-closed` | Narrows | response | guaranteed | `INFO` (tolerated) |
+| `request-enum-opened` | Widens | request | guaranteed | `INFO` |
+| `response-enum-opened` | Widens | response | guaranteed | `WARN` |
+| `request-enum-value-removed` | Narrows | request | guaranteed | `ERR` |
+| `response-enum-value-removed` | Narrows | response | guaranteed | `INFO` (tolerated) |
+| `request-enum-value-added` | Widens | request | guaranteed | `INFO` |
+| `response-enum-value-added` | Widens | response | guaranteed | `WARN` (the exhaustive-switch hazard, not tolerated) |
+| `request-property-removed` | Narrows | request | optional | `WARN` |
+| `response-required-property-removed` | Widens | response | guaranteed | `WARN` |
+| `response-property-removed` | Narrows | response | optional | `WARN` |
+| `request-property-became-required` | Narrows | request | guaranteed | `ERR` |
+| `response-property-became-required` | Narrows | response | guaranteed | `INFO` (tolerated) |
+| `request-property-became-optional` | Widens | request | guaranteed | `INFO` |
+| `response-property-became-optional` | Widens | response | guaranteed | `WARN` |
+| `request-property-added-required` | Narrows | request | guaranteed | `ERR` |
+| `request-property-added-optional` | Widens | request | optional | `INFO` |
+| `response-property-added` | Widens | response | guaranteed | `INFO` (tolerated) |
+
+## Fingerprints
+
+Every finding carries a fingerprint: `fp_` plus the first 12 hex characters of a SHA-256 over the check ID, method, template and the check's identity arguments, joined with NUL bytes. The level, the detail text and the source position are deliberately excluded, so the same divergence has the same fingerprint across runs and re-fetches, and a moved line never changes the identity. The declared-by-observed join can raise the level and extend the detail; the fingerprint never moves.
+
+## What the tests enforce
+
+- Every emitted level equals the law's answer for that check's effect, direction, scope and guards. The list of allowed deviations ships empty.
+- Every check ID emitted anywhere in the code is in the inventory, and the inventory has no entry without an emit site.
+- More changes can never lower the verdict. An added `INFO` never lowers an existing `ERR`.
+- Every check names an inverse, or appears in a documented list of asymmetries with a written reason. Reversing a fixture emits the inverse at the law's level.

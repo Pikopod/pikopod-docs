@@ -1,0 +1,53 @@
+---
+title: Modes
+description: Put the served sandbox into a scenario's standing state, then run your own tests against it.
+---
+
+`pikopod scenario run` drives its own requests against a throwaway engine, so your application is never in the loop. A mode is the other half: it arms the scenario's standing conditions on the sandbox `pikopod up` is serving, and then your own tests, your own app, Postman, or plain curl meet the failure.
+
+```bash
+pikopod mode set examplepay timeouts
+```
+
+```text
+mode: timeouts (from archetype or pack timeouts)
+  armed   latency on GET /charges
+point your app at the sandbox and run your own tests; clear it with `pikopod mode clear examplepay`
+```
+
+Now run your integration's test suite against `http://127.0.0.1:4600/examplepay`. Every `GET /charges` is delayed, and your timeout handling is what gets exercised.
+
+## What a mode arms
+
+The scenario's standing conditions: the faults it injects and the state it seeds. Its request steps are not run; those are yours to make. A scenario whose first step is a request has no standing state and is refused with the reason.
+
+```bash
+pikopod mode set examplepay rate_limit_backoff
+pikopod mode set examplepay declines --bind op=createCharge
+pikopod mode set examplepay incident-14835fa32dfb
+```
+
+Packs work as well as archetypes, so a reproduced production incident can be the standing state your whole suite runs against.
+
+## Global, and standing
+
+A mode is global to the sandbox and stays until cleared. Two test suites running against one sandbox see each other's faults, and a fault with a `times` window counts down across both. Run one suite at a time against a given sandbox, or give each its own `pikopod up` on a different port.
+
+```bash
+pikopod mode show examplepay
+pikopod mode clear examplepay
+```
+
+`clear` leaves the standing state and clears every fault on the sandbox.
+
+## From a coding agent
+
+The same three operations are MCP tools: `set_mode`, `clear_mode`, and `get_requests` to see what the code under test actually sent. See [MCP tools](/reference/mcp-tools).
+
+## When you want one fault, not a story
+
+```bash
+pikopod chaos examplepay --kind error --status 503 --method POST --path /charges
+```
+
+See [Faults](/sandbox/faults).

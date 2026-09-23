@@ -1,0 +1,117 @@
+---
+title: Introduction
+description: Rehearse API failures before you ship, and replay the ones production already hit.
+---
+
+pikopod is a sandbox for the APIs you depend on. It is built from the provider's spec, and it fails on purpose. When production fails anyway, pikopod replays that failure into the same sandbox, so you fix it on a laptop and keep the fix as a test.
+
+<CodeGroup>
+
+```bash go install
+go install github.com/pikopod/pikopod/cmd/pikopod@latest
+pikopod demo
+```
+
+```bash Homebrew
+brew trust pikopod/tap
+brew install pikopod/tap/pikopod
+pikopod demo
+```
+
+```bash Binary
+curl -fsSL https://github.com/Pikopod/pikopod/releases/latest/download/pikopod_0.1.1_linux_amd64.tar.gz | tar xz
+./pikopod demo
+```
+
+</CodeGroup>
+
+One static Go binary. Runs locally. No accounts, no telemetry, no cloud. `pikopod demo` needs no configuration: it stands up a fake provider, sends traffic through it, changes the provider's responses behind your back, and prints the alerts, in about a second.
+
+## Three things, one tool
+
+| | What it does | Where |
+|---|---|---|
+| **Rehearse** | A deterministic sandbox built from the provider's spec. Eleven failure stories bind to it with nothing authored, and you can arm any failure yourself: declines, timeouts, retry storms, duplicate webhooks. | The sandbox, port 4600 |
+| **Observe** | A fail-open proxy in front of the real provider. It records failures from the first request and shape changes once it knows what normal is, then hands you a fingerprint. | The agent, port 4700 |
+| **Reproduce** | The fingerprint becomes a scenario that replays the production failure against the sandbox. Commit it, and the path is guarded forever. | Any machine |
+
+Your tests point at the sandbox with a test credential pikopod issues. Your real app points at the agent with your real provider credentials, and the agent forwards. The sandbox and the observer are one tool on purpose. You cannot ask a provider's sandbox to return that exact 503, with that body, at that point in your state machine. pikopod can, because the same tool recorded it and owns the sandbox.
+
+## Why pikopod
+
+- **Their sandbox only knows how to succeed.** A provider's sandbox has never declined a charge in a way you did not ask for, never timed out halfway through, never delivered the same webhook twice. pikopod's sandbox does all of that on request.
+- **Eleven failure stories that bind themselves to your API.** When a story cannot bind, pikopod names the missing fact instead of inventing a test.
+- **A CI gate with nothing installed in your request path.** `pikopod spec-diff` fails the build on a breaking spec change, with severity derived by one fixed rule.
+- **An observing agent that cannot slow your traffic.** It serves first and observes afterwards, never retries, and redacts before anything touches disk.
+
+## Example use cases
+
+- **Payments and fintech integrations.** Rehearse declines, partial failures and duplicate webhooks before the retry path runs against real money.
+- **Catching a provider's breaking change before merge.** One line in CI diffs the published spec against your pinned copy and annotates the pull request.
+- **Contract drift in production.** A status value that was always `success` starts arriving as `succeeded`. The agent notices, fingerprints it, and hands you a replayable test.
+- **Offline regression suites.** Recorded traffic and generated scenario packs gate builds with no network and no provider account.
+- **Agent-written integrations.** A coding agent verifies what it wrote against what the provider actually sends, and gets an honest verdict.
+
+## Minimal example
+
+Import a spec, ask which failure stories your API supports, and run two of them. Every line of output below came from running the real binary against the `examplepay` spec that ships with the repository.
+
+```bash
+pikopod init
+pikopod import examplepay --spec ./examplepay.spec.json
+pikopod scenario list examplepay
+```
+
+```text
+archetypes vs examplepay (4 endpoints):
+  ✓ happy_path                 Happy path  (1 candidate binding(s))
+  ✓ unauthorized               Unauthorized  (4 candidate binding(s))
+  ✓ invalid_request            Invalid request  (1 candidate binding(s))
+  ✗ duplicate_delivery         Duplicate delivery
+      no webhookEvent matching {} for role 'emittedEvent'
+  ✓ rate_limit_backoff         Rate limit and backoff  (4 candidate binding(s))
+  ✓ state_transition_sequence  State transition sequence  (1 candidate binding(s))
+  ✓ retry_storm                Retry storm with recovery  (1 candidate binding(s))
+  ✓ declines                   Declines  (1 candidate binding(s))
+  ✓ timeouts                   Timeouts  (1 candidate binding(s))
+  ✓ partial_failure            Partial failure  (1 candidate binding(s))
+  ✓ downtime_recovery          Downtime and recovery  (1 candidate binding(s))
+
+run one: pikopod scenario run examplepay <name> [<name>...]
+```
+
+```bash
+pikopod scenario run examplepay declines retry_storm
+```
+
+```text
+✓ declines — PASSED (4 assertion(s) passed; 0 not evaluated)
+    NOT_EVALUATED  arm-decline      armed error on POST /charges
+    PASSED         declined         POST /charges → 400
+    NOT_EVALUATED  clear            cleared matching faults
+    PASSED         recovered        POST /charges → 201
+✓ retry_storm — PASSED (4 assertion(s) passed; 0 not evaluated)
+    NOT_EVALUATED  arm              armed error on POST /charges
+    PASSED         attempt1         POST /charges → 503
+    PASSED         attempt2         POST /charges → 503
+    PASSED         attempt3         POST /charges → 201
+```
+
+No proxy, no account, nothing in your request path, and nothing to author. The one story that cannot bind says which fact was missing: the spec declares no webhook event, so there is nothing to deliver twice.
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/getting-started/quickstart">
+    Install, import a spec, run a failure, and gate a build in ten minutes.
+  </Card>
+  <Card title="The loop" icon="arrows-rotate" href="/getting-started/the-loop">
+    How gate, sandbox, observe, reproduce and regress feed each other.
+  </Card>
+  <Card title="Catch a breaking change in CI" icon="code-branch" href="/gate/spec-diff">
+    The usual on-ramp. One line, no proxy, no account.
+  </Card>
+  <Card title="CLI reference" icon="terminal" href="/reference/cli/overview">
+    Every command, every flag, every exit code.
+  </Card>
+</CardGroup>

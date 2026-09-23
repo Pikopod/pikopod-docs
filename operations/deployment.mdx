@@ -1,0 +1,84 @@
+---
+title: Deployment
+description: Where the agent runs, where its state lives, and how an incident reaches a developer.
+---
+
+The agent is one process in your request path, and its state is one directory. Both facts decide the topology.
+
+## One agent, not a sidecar per replica
+
+Run one agent as a small shared service. Baselines are single-writer: two agents pointed at one `data_dir` corrupt each other, and N agents with N `data_dir`s learn N partial baselines, each warming up on a fraction of the traffic, each raising incidents the others never see, with a fingerprint that exists on only one host. A single agent behind a stable address sees the whole stream and holds the whole history. The extra hop is a loopback-class forward that serves before it observes.
+
+## If the process dies, traffic stops
+
+pikopod is in the path, so a crash, an OOM, or a bad deploy takes the proxy with it. Run it as you would any sidecar: a supervisor that restarts it, and `/healthz` as the liveness probe. `/healthz` is public for liveness and needs the token for the full payload, so a load balancer can poll it without being handed your upstream inventory.
+
+The sandbox and the agent are separate listeners in one process and fail independently. The sandbox going down does not touch production traffic.
+
+## Start with staging
+
+Drift needs a baseline. Letting the agent warm up somewhere low-stakes means the first thing production sees is a tool that has already been quiet for two days. Incidents fire either way, from the first request.
+
+## data_dir is state, not cache
+
+Put it on a persistent volume, back it up like a database, and give it to exactly one agent. Losing it loses the baselines, the event log and the recordings behind every open incident. Include `.salt` in the backup and exclude it from anything you share. See [Data directory](/operations/data-directory).
+
+## Binding beyond loopback
+
+```yaml
+listen: 0.0.0.0
+token_file: /etc/pikopod/token
+tls:
+  cert_file: /etc/pikopod/cert.pem
+  key_file: /etc/pikopod/key.pem
+```
+
+A non-loopback bind refuses to start without a token. Supply it through `PIKOPOD_TOKEN` or a `0600` token file, and send it as `X-Pikopod-Token` from every client, including your app's calls through the agent. See [Security](/operations/security#listener-safety).
+
+## A systemd unit
+
+```ini
+[Unit]
+Description=pikopod agent and sandbox
+After=network-online.target
+
+[Service]
+User=pikopod
+WorkingDirectory=/var/lib/pikopod
+Environment=PIKOPOD_TOKEN_FILE_UNUSED=1
+ExecStart=/usr/local/bin/pikopod up --config /etc/pikopod/pikopod.yaml
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Put `token_file: /etc/pikopod/token` in the config rather than the token in the unit's environment, so it never appears in `systemctl show`. On `SIGTERM` pikopod drains for three seconds, then closes.
+
+## Container
+
+The image is `FROM scratch`, runs as user `65532`, and has no shell:
+
+```bash
+docker run --rm \
+  -v /srv/pikopod:/data \
+  -p 127.0.0.1:4600:4600 -p 127.0.0.1:4700:4700 \
+  -e PIKOPOD_DATA_DIR=/data \
+  ghcr.io/pikopod/pikopod:0.1.1 up --config /data/pikopod.yaml
+```
+
+Set `listen: 0.0.0.0` and a token inside the container so the published ports are reachable, and keep the host-side binding on loopback unless you mean otherwise.
+
+## How an incident reaches a developer
+
+In rough order of how often they apply:
+
+1. **Export a bundle.** `pikopod incidents export <fp>` on the agent host writes one JSON file with the event, the already-redacted recording and the contract version. `pikopod scenario reproduce ./incident.json` and `pikopod fix ./incident.json` on a laptop read nothing from that laptop's `data_dir`, and the file keeps working after the origin's retention has aged the incident out. See [Incident bundles](/reproduce/incident-bundles).
+2. **Commit the generated pack.** `reproduce` writes an ordinary scenario pack. Once it is in the repository it guards that path forever and needs no recording at all.
+3. **Share `data_dir`** read-only (a mounted volume, an rsync) for a team that wants every incident, not one at a time.
+4. **Automate the export**: `pikopod incidents export --since 24h` in a cron job, attached to an issue or a pull request.
+
+## Sizing
+
+Stored per record are the sanitized request and response, so recordings are small and bounded by `sampling.rate` and `retention`. The sandbox store is capped at 100 MiB per sandbox. The proxy hot path is a full loopback round trip in about 82 microseconds on one machine, with observation fully jammed or not. See [Data plane safety](/observe/data-plane-safety).

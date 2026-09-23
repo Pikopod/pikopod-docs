@@ -1,0 +1,72 @@
+---
+title: Volatile fields
+description: Silence values that churn by nature, without silencing the shape of the field.
+---
+
+Some fields change on every response: request ids, timestamps, correlation ids. Tracking their values would make every response look like drift. `volatile_fields` tells pikopod which values are allowed to churn.
+
+```yaml
+upstreams:
+  examplepay:
+    volatile_fields: [request_id, meta/generated_at, items[]/etag]
+```
+
+## Suppression is value-only
+
+A volatile field is still learned. Its presence, its type and its nullability are still asserted. Only its **values** stop being tracked, so:
+
+| Change on a volatile field | Still alerts? |
+|---|---|
+| A new value | No |
+| The field disappears | Yes |
+| The type changes | Yes |
+| It arrives null | Yes |
+
+The same rule applies in baseline learning, drift diffing, the replay CI gate, the traffic overlay and the state machine.
+
+## Entry syntax
+
+| Form | Matches |
+|---|---|
+| `status` | The leaf segment named `status` at any depth |
+| `meta/status` | Only a `status` directly under `meta` |
+| `items[]/status` | `status` inside each element of the `items` array |
+
+Matching is case-insensitive. An entry may not be empty, start or end with a slash, contain an empty segment, or contain characters other than letters, digits, `_`, `-`, `.`, `$` and `@`. Anything else is a configuration error: `pikopod up` refuses to start and names the entry.
+
+## Curated defaults
+
+A curated list of names that churn by convention is always applied on top of yours, so you rarely need to list the obvious ones: request and correlation ids, trace ids, timestamps, `created_at`, `updated_at`, `processed_at`, `etag`, `nonce`. The replay tier additionally strips a curated list of request fields and headers when hashing: idempotency keys, signatures, trace headers, dates.
+
+## Let the tool suggest them
+
+```bash
+pikopod volatile suggest examplepay
+```
+
+```text
+37 recording(s) analyzed
+
+2 suggestion(s) — every field carrying the name is proven churn:
+  request_ref              37/37 distinct values across [POST /charges]
+  generated_at             37/37 distinct values across [GET /charges]
+add the ones you agree with under upstreams.examplepay.volatile_fields in pikopod.yaml
+```
+
+A field is suggested only when it is proven to churn: at least ten observations, a stable type, never a container, never a value the sanitizer rewrote, and at least half of its observations distinct. Anything that did not become a suggestion is listed with the reason, so an over-broad entry never goes green while quietly asserting less.
+
+## Collateral
+
+`pikopod up` and `volatile suggest` both lint the configured entries against what has been learned:
+
+| Verdict | Meaning |
+|---|---|
+| `DEAD_ENTRY` | The entry matches no field the agent has learned. You believe a field is excluded while nothing is. |
+| `STABLE` | The field never changed value across ten or more samples. There is nothing to silence. |
+| `OVER_BROAD` | A bare name also covers a field that never churned, silencing its value assertion for nothing. Scope it with a `parent/child` form. |
+
+```text
+volatile_fields examplepay: DEAD_ENTRY request_ref (matches no field the agent has learned; you believe a field is excluded while nothing is)
+```
+
+Remove or fix what it names. See [`pikopod volatile`](/reference/cli/volatile).

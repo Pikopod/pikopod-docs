@@ -1,0 +1,54 @@
+---
+title: Generated packs
+description: Packs pikopod writes for you from a drift event, an incident, or recorded traffic.
+---
+
+Generated packs are ordinary YAML under `<data_dir>/scenarios`. Commit them and they are the regression suite for every provider change you have survived.
+
+## From a drift event
+
+```bash
+pikopod scenario from-drift fp_385153d1776c
+```
+
+```text
+pinned fp_385153d1776c (GET /transaction/tx_{id}) as pikopod-data/scenarios/drift-385153d1776c.yaml
+PASSED — 2 assertion(s) passed; 0 not evaluated
+baseline pinned and green — a future re-import that adopts this change will fail `pikopod scenario run examplepay drift-385153d1776c`
+```
+
+The pack pins the contract you integrated against via `contractVersion`. It seeds a resource with the baseline's value, reads it back, and asserts the old shape: the field exists, the type matches, the value is in the known set, the status is what it was. It passes while your sandbox still honours that baseline and fails the moment you re-import a spec that adopts the provider's change, so the break happens here rather than in production.
+
+Exit `1` on a failed replay confirms the sandbox already reproduces the drifted behaviour: your integration breaks here, not in production.
+
+Some drift kinds cannot be pinned deterministically: a field inside a nested array, a baseline that knew several status codes, nullability and error-shape changes, and endpoints with a non-trailing or multiple path parameters. For those the command says so and you write the scenario by hand from the [pack format](/scenarios/pack-format).
+
+## From an incident
+
+```bash
+pikopod scenario reproduce fp_14835fa32dfb
+```
+
+Arms the same failure and replays the recorded request. See [Reproduce](/reproduce/reproduce).
+
+## From recorded traffic
+
+```bash
+pikopod scenario from-recordings examplepay --last 20 --name checkout-flow
+```
+
+```text
+generated checkout-flow from 20 recording(s): pikopod-data/scenarios/checkout-flow.yaml
+run it: pikopod scenario run examplepay checkout-flow
+chains are conservative (identifier-shaped, produced-before-consumed only) — review the pack before trusting it in CI
+```
+
+The pack replays the window's requests in recorded order with a status assertion on each. Identifier-shaped values that a response produced and a later request consumed become captures and `{{chain_n}}` variables, so the pack follows the same resource through the flow. Short literals, enum words, amounts and booleans never chain. Review the pack before relying on it.
+
+## From plain English
+
+```bash
+pikopod scenario create examplepay "timeout after the charge succeeds"
+```
+
+See [Plain English](/scenarios/plain-english).

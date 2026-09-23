@@ -1,0 +1,53 @@
+---
+title: Binding
+description: How an archetype attaches to your API, why it sometimes refuses, and how to assert a fact yourself.
+---
+
+An archetype declares **roles**: `op`, `createOp`, `updateOp`, `emittedEvent`. Binding finds operations and events in your imported spec that can fill them, and expands the archetype into concrete steps against those operations.
+
+```bash
+pikopod scenario list examplepay -v
+```
+
+```text
+archetypes vs examplepay (4 endpoints):
+  ✓ declines                   Declines  (1 candidate binding(s))
+      op=createCharge
+  ✗ duplicate_delivery         Duplicate delivery
+      no webhookEvent matching {} for role 'emittedEvent'
+```
+
+## Binding uses explicit and confirmed facts only
+
+A candidate resting on a guessed fact is rejected, because a test resting on a guess fails for reasons that have nothing to do with your code. That rule produces two honest answers:
+
+- **`archetype does not apply`**: your API has no operations that can fill the archetype's roles. A read-only API genuinely has no duplicate-delivery story.
+- **`no candidate binding grounds`**: roles could be filled, but no candidate expanded into a definition that validates against the pinned API.
+
+Zero candidates is a first-class result with a reason attached, not an error and not a guess.
+
+## Override a role
+
+```bash
+pikopod scenario run examplepay declines --bind op=createCharge
+```
+
+`--bind role=operationId` overrides one role. The value is an `operationId` from your spec. If it names something the API does not have, the expansion fails to ground rather than running a test that cannot mean anything. `--bind` is repeatable and also accepted by `mode set`.
+
+## Sandboxes imported from a docs URL
+
+A sandbox whose contract a model extracted from documentation has only **extracted** facts, and an archetype never binds on extracted facts alone. `scenario list` prints the candidate it would have chosen as a ready `--bind` line:
+
+```text
+  ✗ declines                   Declines
+      every candidate rests on extracted facts only; assert a role with --bind
+      assert it: pikopod scenario run examplepay declines --bind op=createIntent
+```
+
+Passing it is you asserting that the operation plays that role, and the run says so. An asserted operation must still have the role's shape: a create role needs a create. What you vouch for is the fact the docs left out, not the shape.
+
+Once you have reviewed the extracted spec, remove its `x-pikopod-origin` marker and re-import from the file. The facts are then yours, and binding proceeds without `--bind`. See [Importing from a docs URL](/sandbox/docs-url-import).
+
+## Webhook roles
+
+`duplicate_delivery` needs an `emittedEvent`: a declared webhook event with a trigger. A spec with no webhooks, or a docs import that could not know which call fires which event, cannot bind it. Bind events to their calls in the webhooks sidecar. See [Webhooks](/sandbox/webhooks).

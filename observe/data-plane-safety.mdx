@@ -1,0 +1,53 @@
+---
+title: Data plane safety
+description: The proxy serves first and observes afterwards. Nothing internal may alter, delay or drop your traffic.
+---
+
+The sandbox is not in your request path. The observing agent is a reverse proxy in production, so it gets the scrutiny.
+
+## Serve first, observe afterwards
+
+The response is written to your client in full before any observation code runs. The request body is copied on the way through into a capped buffer, and the copy never affects the bytes on the wire: past the cap the copy truncates and the pass-through continues. Streaming and server-sent events flush immediately.
+
+Observation then runs asynchronously behind a bounded queue:
+
+| Bound | Value |
+|---|---|
+| Captured body, per request or response | 1 MiB (the wire is unlimited) |
+| Total queued body bytes | 256 MiB |
+| Queue depth | 1024 exchanges |
+
+When the queue is full, the oldest capture is dropped and counted. When the byte budget is exhausted, the new capture is dropped and counted. Every capture stage recovers from panics and counts them. `/healthz` reports `recordings_dropped` and `observer_panics`, so a struggling observer is visible without ever being felt.
+
+## It never retries
+
+An unreachable upstream gets an honest `502` with `X-Pikopod-Error: upstream-unreachable` and no second attempt. A retry in front of a payments API is a double-charge window.
+
+## No timeout of its own
+
+The agent sets no upstream timeout, so a legitimately slow or streaming response is never cut short. An incident fires when your caller gives up and the connection dies, not when a stopwatch says so. Only the request header read has a deadline, 20 seconds, so a client that never sends headers cannot hold a connection open forever.
+
+## Protocol upgrades pass through
+
+WebSocket and other upgrades are handed to the upstream unchanged. A test pins this, because a capture wrapper that broke upgrades would violate fail-open.
+
+## Measured, not asserted
+
+Two benchmarks serve the same workload. In the second, observation is completely jammed: nothing drains the capture queue, so every request takes the drop path.
+
+```text
+BenchmarkProxyServe                 82,041 ns/op
+BenchmarkProxyServeObserverWedged   81,868 ns/op
+```
+
+Under 1% apart, run to run. Both figures are a full loopback round trip on one machine, so read the difference, not the absolute. A further test sends a 64 KiB random payload through a proxy with a one-slot capture queue and nobody draining it, and asserts the body arrives byte-identical with captures dropped.
+
+Run them yourself:
+
+```bash
+go test ./internal/proxy/ -bench . -benchtime 300x
+```
+
+## If the process dies
+
+Traffic stops, because pikopod is in the path. Run it as you would any sidecar: a supervisor that restarts it, and `/healthz` as the liveness probe. On `SIGTERM` it drains for three seconds and then closes. The sandbox and the agent are separate listeners and fail independently. See [Deployment](/operations/deployment).

@@ -1,0 +1,37 @@
+---
+title: Recordings tier
+description: Serve the linked upstream's recorded traffic for requests neither the spec nor admitted traffic can answer.
+---
+
+```bash
+pikopod import examplepay --spec ./openapi.json --recordings-fallback
+```
+
+With the flag, recorded traffic from the linked agent upstream becomes the sandbox's final resolution tier. A request the spec cannot answer, and the traffic overlay has not admitted, is answered from the closest recording instead of a `404`. It is never on silently.
+
+## Matching is hierarchical
+
+One clever hash would miss on real payment traffic where every request carries different amounts and references, so matching degrades in three steps:
+
+1. **exact**: method, path, and the normalized request body hash.
+2. **shape**: method, path template, and the set of body fields, values ignored.
+3. **sequence**: the next unserved recording for that method and template.
+
+Before hashing, a curated list of request fields and headers that churn by nature (idempotency keys, trace ids, signatures, timestamps) is stripped.
+
+## Every response says where it came from
+
+| Header | Meaning |
+|---|---|
+| `x-pikopod-replay-tier` | `exact`, `shape` or `sequence`, or `miss` when no recording fit. |
+| `x-pikopod-replay-missed-on` | Which fields kept the request from an exact match. |
+| `x-pikopod-replay-closest` | The closest recording considered on a miss. |
+| `x-pikopod-replay-sequence` | The position served from the sequence tier. |
+
+Each degradation explains which fields missed, so a shape-tier answer is never mistaken for an exact one.
+
+## What it needs
+
+An agent upstream with the same name, or one linked with `--upstream`, and recordings under `<data_dir>/recordings/<upstream>.ndjson`. When the flag is on but no recordings are loaded yet, `pikopod up` says so and unmatched requests answer `404` until traffic is recorded.
+
+Recordings are the redacted ones. Identifiers are tokens and unclassified strings were dropped, so a replayed body is the sanitized body. See [Redaction](/observe/redaction).

@@ -1,0 +1,117 @@
+---
+title: Development
+description: Build, test and release pikopod from source.
+---
+
+## Prerequisites
+
+- **Go, at the version `go.mod` declares.** That is the only hard requirement. CI resolves it from `go.mod` rather than pinning a number.
+- **No cgo.** pikopod builds static binaries with `CGO_ENABLED=0`, including its SQLite layer, which is the pure-Go driver. A change that needs cgo needs a discussion first.
+- **Python 3**, only if you regenerate synthetic test fixtures.
+
+CI runs tests on Linux. macOS and Windows are cross-compiled with `go build`, so if you change anything platform-sensitive, run the suite on your own machine and say so in the pull request.
+
+## Set up
+
+```bash
+git clone https://github.com/pikopod/pikopod.git
+cd pikopod
+go build ./...
+go run ./cmd/pikopod demo
+```
+
+There is no code generation step and no vendored submodule.
+
+## Build and test loop
+
+```bash
+go build ./...                  # build
+go test ./... -race -count=1    # the suite, as CI runs it
+go vet ./... && gofmt -l .      # must both be clean
+```
+
+All packages pass with `-race`. Keep it that way.
+
+| Command | What it does |
+|---|---|
+| `CGO_ENABLED=0 go build ./cmd/pikopod` | Build the static binary CI ships |
+| `go test ./internal/sandbox/ -run TestParity -v` | One package, one test |
+| `go test ./internal/proxy/ -bench . -benchtime 300x` | Proxy hot-path benchmarks |
+| `go run ./cmd/pikopod demo` | End-to-end smoke test |
+
+The e2e suite lives in `e2e/` and runs as part of `go test ./...`. CI additionally runs the fixture licensing guard, `go vet`, the parity suites, and a zero-cgo build matrix across linux, darwin and windows on amd64 and arm64.
+
+## Where local state goes
+
+Running from the repo writes `./pikopod.yaml` (from `init`) and `./pikopod-data/`. Both are gitignored. To keep an experiment out of the way:
+
+```bash
+go run ./cmd/pikopod --config /tmp/scratch/pikopod.yaml up
+```
+
+## Project structure
+
+`cmd/pikopod` is thin cobra wiring. Everything else lives in `internal/`.
+
+| Package | Role |
+|---|---|
+| `proxy` | Fail-open reverse proxy. No internal error may alter, delay or drop proxied traffic. |
+| `sanitize` | Redact before disk: classification, format-preserving tokens, fail-closed drops. |
+| `store` | Atomic writes, file locks, the per-install salt, NDJSON logs with rotation. |
+| `agent` | Composes the data plane: proxy to recorder to learner and differ to alerter. |
+| `baseline` | Learns per-endpoint normal, then freezes a reference. |
+| `pathtmpl` | Collapses concrete paths into endpoint templates. |
+| `drift` | Diffs traffic against the frozen reference. |
+| `alert` | Dedupe, N-in-window emission, delivery ceiling, persisted ack state, sinks. |
+| `volatile` | Volatile-field matching, suggestion and collateral linting. |
+| `specwatch` | Re-fetches the provider's published spec. ETag gated, never advances the pin. |
+| `specdiff` | Typed spec-to-spec diff with severity derived by law. |
+| `specupdate` | Format-preserving, additive-only spec patches. |
+| `conformance` | Does the provider obey its own documentation? |
+| `contract` | The traffic overlay layered beside the spec-derived contract. |
+| `behaviour` | The observed state machine. |
+| `ir` | The normalized contract. Every field carries provenance. |
+| `importer` | OpenAPI, Swagger 2.0, Postman and GraphQL to IR. |
+| `docimport` | Documentation URL to spec. |
+| `sandbox` | The deterministic engine: routing, auth, validation, synthesis, faults, webhooks. |
+| `replay` | Recorded traffic as the sandbox's final tier, plus the CI gate. |
+| `scenario` | Pack schema, validator, runner, archetype catalogue, plain-English authoring. |
+| `bridge` | Drift, incidents and recordings to scenario packs; incident bundles. |
+| `mcp` | The Model Context Protocol server. |
+| `pr` | GitHub and GitLab forge layer. |
+| `fix` | Drift to code change. |
+| `errfmt` | The error contract: what, why, fix, docs. |
+| `config` | Loads `pikopod.yaml`. Unknown keys are startup errors. |
+
+## Parity goldens
+
+`testdata/parity/` holds committed golden files. **They are maintainer-regenerated. Do not hand-edit them.** If your change legitimately moves a golden: leave it as it is, expect the parity job to be red, and say in the pull request which golden moved and why. A maintainer regenerates on your branch from the code.
+
+## Test fixtures and licensing
+
+Fixtures under `testdata/parity/importer/specs/` are license-checked in CI. Every file needs an entry in that directory's `SOURCES.md`. No provider content lands without an explicit grant. When a test needs a real-world shape you cannot license, generate a synthetic fixture:
+
+```bash
+python3 tools/gen-synthetic-fixtures.py
+```
+
+## House rules
+
+- **Nothing internal may alter the data plane.** The agent serves before it observes, never retries, and isolates every capture stage.
+- **Redaction happens before the disk.** The canary test in `internal/agent` seeds sentinels into every position and sweeps every persisted byte. It must pass.
+- **A field on the IR that nothing reads is deleted, not parked.** The reader audit fails the build otherwise.
+- **Refuse rather than guess.** If a check cannot be proven, report that it could not be proven.
+- **Errors are a contract.** Use `errfmt.New(what, why, fix, docs)`, and make sure the doc anchor exists.
+- **Exit codes are API.** `0` clean, `1` the check ran and failed, `2` tool or configuration error.
+- **Every model call is opt-in and confined to three places.** Adding a fourth means adding a row to the security page in the same pull request.
+
+## Release
+
+Releases are cut by tag and built by GoReleaser: static binaries for macOS, Linux and Windows on amd64 and arm64, an SBOM per archive, `SHA256SUMS` signed with cosign, SLSA provenance, deb and rpm packages, a container image on GHCR, and a Homebrew formula.
+
+```bash
+git tag v0.2.0
+git push origin v0.2.0
+```
+
+Verify a release the way a user would, with the command in [Installation](/getting-started/installation#verify-a-release).

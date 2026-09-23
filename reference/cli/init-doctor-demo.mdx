@@ -1,0 +1,45 @@
+---
+title: pikopod init, doctor, demo
+description: Scaffold a config, verify the wiring, and see the whole loop in a second.
+---
+
+## init
+
+```text
+pikopod init
+```
+
+Writes `./pikopod.yaml` with mode `0600` and refuses to overwrite an existing one.
+
+```text
+wrote pikopod.yaml — edit the upstreams block, then: pikopod doctor && pikopod up
+```
+
+The template is shown in [Configuration](/operations/configuration#the-init-template).
+
+## doctor
+
+```text
+pikopod doctor
+```
+
+Verifies the wiring end to end: the config loads, `data_dir` is writable, the salt is present or creatable, the agent port is free or already pikopod, and every upstream target answers a `HEAD` request.
+
+```text
+  ✓ pikopod.yaml loads
+  ✓ data dir writable
+  ✓ salt present or creatable
+  ✓ agent port free or agent already running
+  ✓ upstream examplepay reachable (https://api.examplepay.com)
+all checks passed — point your app at the agent and run `pikopod up`
+```
+
+Any failing check prints its reason under a `✗` and the command exits `2`. Running it creates `data_dir` and the salt if they do not exist.
+
+## demo
+
+```text
+pikopod demo
+```
+
+Zero config. Starts a fake provider in-process, sends traffic through the agent, silently changes the provider's responses, and prints the alerts. Everything happens in a temporary directory that is removed on exit. Takes about a second.

@@ -1,0 +1,68 @@
+---
+title: Alerts
+description: One alert per fingerprint, forever. Dedupe, thresholds, delivery, and what ack and accept do.
+---
+
+Alert behaviour is a fixed contract, not a set of keys.
+
+## The contract
+
+- **One alert per fingerprint, forever.** A given structural change notifies once, however many requests carry it. Later occurrences update the event's `last_seen` and `occurrences`, nothing more.
+- **Three occurrences before the first alert**, inside a fifteen-minute window, so a single anomalous response never pages anyone. Declared changes from the spec watcher are deterministic and alert on first occurrence.
+- **Dedupe and acknowledgement are persisted** in `<data_dir>/alerts/state.json`, so restarts do not re-alert. State is written before the network delivery, so a crash mid-delivery cannot re-alert either.
+- **A delivery ceiling of 60 per hour.** The 61st delivers one note saying further alerts this hour are in the local event log, which always gets every event.
+- **The fingerprint cap evicts rather than going dark.** Up to 10,000 fingerprints are tracked. At the cap, acknowledged ones are evicted first, then the oldest alerted ones. If nothing can be evicted, a one-shot saturation notice tells you to acknowledge standing alerts or reset baselines.
+- **Latency is never alerted.**
+
+## Where alerts go
+
+Without a Slack webhook, alerts print to stdout. With one, they post as a plain incoming webhook message:
+
+```yaml
+slack:
+  webhook_url: https://hooks.slack.com/services/...
+  min_level: WARN
+  digest_hours: 24
+```
+
+`min_level` floors the channel, not the record. Muted alerts still appear in the event log, in `pikopod status`, and in the digest. `digest_hours` posts a periodic summary of new findings by severity and source; `0` disables it.
+
+Delivery is asynchronous behind a 256-message queue so a slow webhook never touches the data plane. `/healthz` reports `last_delivery_ok`, `last_delivery_err` and `deliveries_dropped`.
+
+## What an alert looks like
+
+```text
+[ERR] pikopod drift — field disappeared on GET /charges/{id} (examplepay)
+`refunded_at` (string) is gone from responses that always carried it
+fingerprint fp_6d540d187d44 · first seen 2026-09-20T08:12:03Z · 3 occurrence(s)
+replay it: pikopod scenario from-drift fp_6d540d187d44
+```
+
+Declared changes say so explicitly:
+
+```text
+[WARN] pikopod declared drift [WARN] on GET /charges/{id} (examplepay)
+response 200 (application/json) field `status` (guaranteed) removed — consumers reading it break
+fingerprint fp_57f7a3158a88 · the provider changed their SPEC — this is documented, not observed on the wire
+review: pikopod spec-diff output, then pikopod import examplepay --update to accept
+```
+
+Every alert carries finding structure and field paths only. Values are the redacted ones; identifiers never egress.
+
+## Acknowledge versus accept
+
+| Command | What it does | Needs `pikopod up`? |
+|---|---|---|
+| `pikopod ack <fp>` | Silences the fingerprint until its diff changes. The baseline is untouched. | No. Offline it edits the persisted state, applied on the next start. |
+| `pikopod accept <fp>` | Refreezes the affected endpoint's baseline from live traffic, then acknowledges. The drifted behaviour is the baseline now; findings for it stop entirely. | Yes. |
+
+```bash
+pikopod ack fp_6d540d187d44
+pikopod accept fp_6d540d187d44
+```
+
+Both are also available over HTTP on the agent as `POST /ack?fp=` and `POST /accept?fp=`. See [Control plane](/reference/control-plane#acknowledge-and-accept).
+
+## The event log
+
+Every event, delivered or not, is appended to `<data_dir>/events.ndjson` in the [drift event schema](/reference/drift-event-schema). `pikopod incidents` reads it. The log rotates by size and by `retention.max_age_hours`; acknowledgement state is never aged.

@@ -1,0 +1,41 @@
+---
+title: Request journal
+description: What your code actually sent to the sandbox, as opposed to what it was meant to send.
+---
+
+A running sandbox keeps a journal of every request it received: sequence number, method, path, matched template, status, and the redacted headers, query and body.
+
+```bash
+pikopod sandbox requests examplepay
+```
+
+```text
+#1    POST   /charges                                 → 201
+#2    POST   /charges                                 → 503
+#3    POST   /charges                                 → 503
+#4    POST   /charges                                 → 201
+4 request(s)
+```
+
+## What it is for
+
+Two claims only the journal can settle:
+
+- **Did the code retry, and with the same idempotency key?** Journaled headers are redacted before storage, so an identifier arrives as a deterministic token. Two entries carrying the same token prove the same key was sent, without the key being readable.
+- **In what order, and how far apart?** A `VERIFY_SEQUENCE` step in a scenario asserts an ordered subsequence with virtual-time gaps. See [Pack format](/scenarios/pack-format#verify_sequence).
+
+From a coding agent, `get_requests` returns the same journal, which is the only way to check what code under test sent rather than what it was meant to send.
+
+## Bounds
+
+The journal holds the newest 1024 entries, 64 headers and 64 query values per entry, and 16 KiB of body. When older entries have been evicted, the footer says how many, and any assertion that spans the gap fails closed rather than quietly not matching:
+
+```text
+1024 request(s) — 37 older entries EVICTED (upper-bound verifications fail closed)
+```
+
+Clear it with `pikopod sandbox requests examplepay --reset`.
+
+## In scenarios
+
+Scenario runs have their own journal inside the run. `VERIFY_REQUESTS` answers "how many, and what was the last one"; `VERIFY_SEQUENCE` answers "in what order, and how far apart".

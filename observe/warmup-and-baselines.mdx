@@ -1,0 +1,51 @@
+---
+title: Warmup and baselines
+description: Learn what normal is, freeze it, then compare against the frozen copy.
+---
+
+Learning runs **LEARN → FREEZE → DIFF**. For each endpoint and status class the agent accumulates field statistics until both warmup gates clear, then freezes a reference. Later traffic is compared against the frozen copy, never against a slowly moving average. That is what stops a gradual change from quietly becoming the new normal.
+
+## The gates
+
+```yaml
+warmup:
+  min_samples: 50
+  min_hours: 48
+```
+
+An endpoint family freezes once it has seen `min_samples` responses **and** at least `min_hours` have passed since its first one. Both must hold. The record that crosses the threshold is the first one diffed against the frozen reference.
+
+Both are overridable for evaluation. Lowering them shortens the blind window and raises false positives. `min_hours: 0` is allowed and is distinct from unset.
+
+## What a family is
+
+A baseline family is one `(upstream, method, path template, status class)`. `GET /charges/{id}` answering `2xx` is one family; the same endpoint answering `4xx` is another. Concrete paths are collapsed into templates automatically: UUIDs, dates, prefixed ids like `ch_8f3a91`, numeric ids and opaque strings become `{id}`-style segments, and a position that shows more than 32 distinct values is promoted to a parameter even when its values do not look like ids.
+
+## What is learned per field
+
+For every field path in the response body, the family records how often it was present, the types it carried, and, while the field stays low-cardinality, the set of values it carried. A field that shows more than 24 distinct values is marked high-cardinality and only its shape is compared from then on: ids and tokens drift by nature, and only enum-like fields can have value drift.
+
+## What freezing does
+
+The live statistics keep accumulating after the freeze, but drift is diffed against the frozen snapshot: the fields, their types, their value sets, and the exact status codes the family had returned. Presence is judged against the number of samples at freeze time, so a field that was optional at freeze time cannot manufacture a removal later.
+
+## Checking progress
+
+```bash
+pikopod status
+```
+
+`status` reads `/healthz` and lists every family with its sample count and whether it is warmed up. `pikopod report` prints the endpoint inventory from the baselines on disk, which is worth reading after about 48 hours: it is what your app actually calls. See [Inspecting](/observe/inspecting).
+
+## Resetting and refreezing
+
+| Command | Effect |
+|---|---|
+| `pikopod baseline reset <upstream>` | Delete the upstream's baselines. Warmup restarts on the next traffic. |
+| `pikopod accept <fingerprint>` | Refreeze the affected endpoint from live traffic and acknowledge the alert. The drifted behaviour becomes the baseline. |
+
+Baselines live in `<data_dir>/baselines/<upstream>.json` and are single-writer. Run one agent per `data_dir`. See [Deployment](/operations/deployment).
+
+## Muted endpoints
+
+Templates listed under an upstream's `mute` still learn, so their baselines stay warm, but no finding on them is emitted. See [Configuration](/operations/configuration#upstreams).

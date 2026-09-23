@@ -1,0 +1,51 @@
+---
+title: Pull requests
+description: Post findings on a pull request, or open one carrying a fix. GitHub and GitLab.
+---
+
+The PR surface is two-step by design. Finding commands write a JSON handoff; `pikopod pr` consumes it. Credentials come from the environment or the `gh` CLI, never from a flag.
+
+## Post a comment
+
+```bash
+pikopod spec-diff git:origin/main:openapi.yaml openapi.yaml --format githubactions --handoff report.json
+pikopod pr comment --handoff report.json
+```
+
+```text
+comment created (source spec-diff, github)
+```
+
+One marker-tagged comment per finding source, updated in place on re-runs rather than a new comment per run. The comment carries the head SHA, so a stale comment is visible as such.
+
+Handoffs come from `spec-diff`, `replay --ci`, `conformance` and `spec-update`.
+
+If the token cannot comment, as with a read-only token on a pull request from a fork, `pr comment` writes the report to the job summary instead, or to stdout, and exits `0` with a note on stderr.
+
+## Open a pull request
+
+```bash
+pikopod spec-update examplepay --out openapi.yaml --handoff update.json
+pikopod pr open --commit openapi.yaml --handoff update.json --title "examplepay: adopt observed fields"
+```
+
+`pr open` branches, commits the files you name, pushes, and opens a PR whose body is the handoff rendered as evidence. `--dry-run` prints the git and PR plan without executing. Branch names may not start with `-`.
+
+| Flag | Meaning |
+|---|---|
+| `--commit` | File to commit on the PR branch. Repeatable. Already modified in the working tree. |
+| `--handoff` | JSON handoff whose rendering becomes the PR body. |
+| `--branch` | Default `pikopod/update-<timestamp>`. |
+| `--base` | Default: origin's HEAD, else `main`. |
+| `--title` | |
+
+`pikopod fix --pr` uses the same machinery with its own body. See [Fix](/reproduce/fix).
+
+## Platforms and credentials
+
+| Platform | Detected by | Credential |
+|---|---|---|
+| GitHub | `GITHUB_ACTIONS=true` | `GITHUB_TOKEN`, then `GH_TOKEN`, then a logged-in `gh` CLI |
+| GitLab | `GITLAB_CI=true` | `GITLAB_TOKEN` with `api` scope. Job tokens usually cannot post merge request notes. |
+
+Repository, pull request number and head SHA default from the CI environment. Outside CI, pass `--platform github|gitlab`, `--repo owner/name` (or the GitLab project path or id), `--number <pr>` for comments, and `--api <url>` for GitHub Enterprise or self-hosted GitLab. See [Environment variables](/reference/environment-variables#ci-detection).

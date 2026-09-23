@@ -1,0 +1,16 @@
+---
+title: License
+description: pikopod is open source under Apache-2.0.
+---
+
+pikopod is licensed under the [Apache License 2.0](https://github.com/pikopod/pikopod/blob/main/LICENSE). You can use it commercially, modify it, distribute it, and use it privately. The license includes an express grant of patent rights from contributors.
+
+The repository's `NOTICE` file carries attribution that must be preserved in redistributions.
+
+## Test fixtures
+
+Fixtures under `testdata/parity/importer/specs/` are license-checked in CI. Every file needs an entry in that directory's `SOURCES.md`, and an unlisted spec fails the build. No provider content lands without an explicit grant; "publicly fetchable" is not a grant. When a test needs a real-world shape that cannot be licensed, a synthetic fixture is generated and named `synthetic-*`.
+
+## Your data
+
+There is no telemetry, there are no accounts, and there is no license check. Everything pikopod persists lives in your `data_dir`. See [What leaves the machine](/operations/security#what-leaves-the-machine).

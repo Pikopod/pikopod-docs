@@ -1,0 +1,59 @@
+---
+title: Running
+description: pikopod up serves every registered sandbox on one port, with a control plane next to it.
+---
+
+```bash
+pikopod up
+```
+
+```text
+pikopod agent on http://127.0.0.1:4700  (upstreams: examplepay)
+point your app's provider base URL at http://127.0.0.1:4700/<upstream>; /healthz shows progress
+pikopod sandbox on http://127.0.0.1:4600  (sandboxes: examplepay)
+```
+
+Every registered sandbox is served at `http://127.0.0.1:4600/<name>/`. The agent and the sandbox run in one process and fail independently.
+
+## Point staging at it
+
+Set your application's provider base URL to `http://127.0.0.1:4600/examplepay` and send the issued credential. Every response carries `X-Pikopod-Operation` naming the operation that matched and `x-pikopod-contract-version` naming the contract version it was rendered from.
+
+```bash
+curl -H 'Authorization: Bearer pikopod_sbx_test_…' \
+  -H 'Content-Type: application/json' \
+  -d '{"amount": 1250, "currency": "NGN"}' \
+  http://127.0.0.1:4600/examplepay/charges
+```
+
+## The control plane
+
+Under `/_pikopod/sandboxes/<name>/` the sandbox listener serves faults, the request journal, the standing mode, and webhook deliveries. The CLI commands `chaos`, `mode`, `webhook` and `sandbox requests` talk to it, and so do the MCP control tools. On loopback it is unauthenticated, because it controls a fake and never a provider. See [Control plane](/reference/control-plane).
+
+## Ports, addresses and tokens
+
+```yaml
+listen: 127.0.0.1
+sandbox_port: 4600
+agent_port: 4700
+```
+
+Binding a non-loopback address requires a token, sent as `X-Pikopod-Token` on every request. See [Configuration](/operations/configuration#listen-and-tokens).
+
+## Real delays
+
+Armed delays are virtualized by default: a `latency` fault of 30 seconds is instant on the wire and reported in the `x-pikopod-fault-delay-ms` response header, which is what `scenario run` measures against. To make delays and hangs real on the wire for your own tests:
+
+```bash
+pikopod up --wallclock-faults
+```
+
+Or pass `--wallclock` when arming one fault. See [Faults](/sandbox/faults).
+
+## Several sandboxes
+
+Register as many as you need; each gets its own route and seed. A mode is global to one sandbox, so two suites that need different failures at once should use two sandboxes, or two `pikopod up` processes on different ports with their own `data_dir`.
+
+## Resetting
+
+`pikopod sandbox reset <name>` clears stored resources. A running `pikopod up` keeps its in-memory journal and webhook state until restarted. See [`pikopod sandbox`](/reference/cli/sandbox).

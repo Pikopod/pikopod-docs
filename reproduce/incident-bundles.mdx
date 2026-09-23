@@ -1,0 +1,42 @@
+---
+title: Incident bundles
+description: Move an incident from the agent host to any machine that will reproduce or fix it.
+---
+
+The agent's `data_dir` lives on the host that runs it. A developer's laptop does not have it. A bundle carries one incident across that gap: the event, the already-redacted recording, and the contract version. Nothing else.
+
+## Export
+
+```bash
+pikopod incidents export fp_14835fa32dfb > incident.json
+```
+
+Every incident row printed by `pikopod incidents` carries the exact line to run. For everything in a window, as a JSON array:
+
+```bash
+pikopod incidents export --since 24h > incidents.json
+```
+
+The bundle carries no salt, no token and no configuration. The recording inside it is the redacted one, so it is as safe to attach to an issue as anything `pikopod inspect` prints.
+
+## Reproduce and fix from it
+
+```bash
+pikopod scenario reproduce ./incident.json
+pikopod fix ./incident.json --check "go build ./..."
+```
+
+Both read nothing from the local `data_dir`, and the file keeps working after the origin host's retention has aged the incident out. The bundle records the export time, the origin host, and, when retention is configured, the time the origin will forget the incident.
+
+## Where this fits
+
+In rough order of how often they apply:
+
+1. **Export a bundle** when one developer needs one incident now.
+2. **Commit the generated pack** so the path is guarded forever with no recording at all.
+3. **Share `data_dir`** read-only for a team that wants every incident.
+4. **Automate the export** with `--since 24h` in a cron job, attached to an issue or pull request.
+
+## Safety on the way back in
+
+A bundle is untrusted input. Its schema version is checked, unknown fields are refused, an incomplete bundle is refused, and the file is capped at 8 MiB. See the [bundle format](/reference/incident-bundle).

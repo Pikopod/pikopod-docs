@@ -1,0 +1,38 @@
+---
+title: pikopod webhook
+description: Fire a declared event on a running sandbox, and see how the sink answered.
+---
+
+## webhook emit
+
+```text
+pikopod webhook emit <sandbox> <event> [--data <json | @file>]
+```
+
+Some events follow no API call: money landing in an account, a chargeback, a KYC decision. Declare them in the spec with `x-pikopod-emit-only: true`, or in the webhooks sidecar with `emitOnly: true`, and fire them here. Only declared events can be emitted; pikopod never invents one, since at your handler it would be indistinguishable from a real delivery.
+
+`--data` is a JSON object, inline or `@path`, overlaid onto the documented payload shape so your values reach a nested payload rather than being replaced by synthesis.
+
+```bash
+pikopod webhook emit examplepay transaction.created --data @transaction.json
+```
+
+```text
+emitted transaction.created on examplepay (signed delivery queued; `pikopod webhook list examplepay` shows whether the sink took it)
+```
+
+## webhook list
+
+```text
+pikopod webhook list <sandbox>
+```
+
+Deliveries a running sandbox has made and how the sink answered.
+
+```text
+1    charge.succeeded                 sbxd_5d2e7f1a9c04b3e8a17f6c02  t=1735689612
+2    transaction.created              sbxd_8e02d7c4b19a3f5d6e0c7b21  t=1735689640
+2 delivered, sink: 2 delivered, 0 failed, 0 dropped
+```
+
+When the sink refused a delivery, the last failure is printed. Both commands need `pikopod up`. See [Webhooks](/sandbox/webhooks).

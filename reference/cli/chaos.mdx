@@ -1,0 +1,41 @@
+---
+title: pikopod chaos
+description: Arm, list and clear faults on a running sandbox.
+---
+
+```text
+pikopod chaos <sandbox> [flags]
+```
+
+Talks only to the local sandbox control plane, so no flag can ever name production. Needs `pikopod up`.
+
+| Flag | Meaning |
+|---|---|
+| `--kind <kind>` | `error` (default), `latency`, `hang`, `slow_body`, `rate_limit`, `connection_reset`, `malformed_response`, `wrong_content_length`, `duplicate_webhook`, `drop_webhook`, `reorder_webhook`, `delay_webhook`. |
+| `--method <METHOD>` | HTTP method of the target operation. Required for non-webhook kinds. |
+| `--path <template>` | Path template of the target operation, as in the spec. Required for non-webhook kinds. |
+| `--status <int>` | Status for `error`. Default 500. `rate_limit` forces 429. |
+| `--delay-ms <int>` | Delay for `latency`, `hang`, `slow_body` and `delay_webhook`. Default 30000 for `latency`. |
+| `--probability <0..1>` | Chance each request trips the fault. Default 1. |
+| `--event <name>` | The event a webhook-kind fault matches. Default any. |
+| `--wallclock` | Delay on the real wire. `hang` and `slow_body` only act with this or `up --wallclock-faults`. |
+| `--list` | Show standing faults. |
+| `--clear` | Clear matching faults, or every fault when `--method` and `--path` are omitted. |
+
+## Examples
+
+```bash
+pikopod chaos examplepay --kind error --status 503 --method POST --path /charges
+pikopod chaos examplepay --kind latency --delay-ms 8000 --method GET --path /charges/{id}
+pikopod chaos examplepay --kind duplicate_webhook --event charge.succeeded
+pikopod chaos examplepay --list
+pikopod chaos examplepay --clear --method POST --path /charges
+pikopod chaos examplepay --clear
+```
+
+```text
+armed: {"armed":{"method":"POST","path":"/charges","kind":"error","status":503,"probability":1}}
+clear it with: pikopod chaos examplepay --clear --method POST --path /charges
+```
+
+A fault with probability 0 is refused, because arming it would be indistinguishable from not arming it. See [Faults](/sandbox/faults).

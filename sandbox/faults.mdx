@@ -1,0 +1,63 @@
+---
+title: Faults
+description: Every failure the sandbox can produce on demand, and what each does on the wire.
+---
+
+A fault is armed on a method and path template, or on a webhook event, and stands until cleared. Arm one on the served sandbox with `chaos`, in a scenario with an `INJECT_FAULT` step, or from a coding agent with `arm_fault`.
+
+```bash
+pikopod chaos examplepay --kind error --status 503 --method POST --path /charges
+pikopod chaos examplepay --clear --method POST --path /charges
+```
+
+## HTTP faults
+
+| Kind | What the caller sees |
+|---|---|
+| `error` | The status you set (default 500) with an empty body and no content type. A `429` also carries `Retry-After: 30`, so a backoff assertion is reproducible. |
+| `rate_limit` | An `error` with status 429. |
+| `latency` | The response is delayed by `delayMs` (default 30000). |
+| `hang` | The connection is held open for `delayMs` (default 60000) with no response. |
+| `slow_body` | The body trickles out over `delayMs` (default 30000). |
+| `connection_reset` | The connection is dropped with a reset, not a clean close. The "connection reset by peer" your retry logic must handle. |
+| `malformed_response` | A valid status line followed by garbage. |
+| `wrong_content_length` | More bytes declared than sent. The client sees an unexpected end of file mid-body. |
+
+Delays compose: a `latency` fault on top of an `error` delays the error. Every delay is capped at 60 seconds.
+
+## Webhook faults
+
+These match on the event (`--event`, default any) rather than on a method and path.
+
+| Kind | What the sink sees |
+|---|---|
+| `duplicate_webhook` | The delivery arrives twice. |
+| `drop_webhook` | The delivery never arrives. |
+| `reorder_webhook` | Deliveries arrive out of order. |
+| `delay_webhook` | The delivery arrives after `delayMs`. |
+
+## Virtual versus real time
+
+By default every delay is virtualized: the response is instant and carries `x-pikopod-fault-delay-ms` with the delay it represents. That is what `scenario run` measures, and it is why a 30-second timeout scenario finishes in milliseconds. `hang`, `slow_body`, `connection_reset`, `malformed_response` and `wrong_content_length` are transport-level lies and only act on the real wire.
+
+To put delays and hangs on the wire for your own tests, arm with `--wallclock`, or start the server with `pikopod up --wallclock-faults`.
+
+## Probability and windows
+
+| Option | Meaning |
+|---|---|
+| `probability` | Chance each request trips the fault, `0..1`, default 1. Rolled from the seed, so it replays identically. A probability of 0 is refused. |
+| `times: N` | Fire for the first N matching requests, then recover deterministically. Probability is ignored while a window is set, because "fails twice then succeeds" must not be a maybe. |
+| `per` | Scope the `times` window: `global` (default), `idempotency-key` (per idempotency header), or `resource` (per path). |
+| `delayDistribution` | A seeded latency model that replays identically. |
+
+Every response that a fault touched carries `x-pikopod-fault-applied`, which is what the `execution.faultApplied` assertion reads.
+
+## Listing and clearing
+
+```bash
+pikopod chaos examplepay --list
+pikopod chaos examplepay --clear
+```
+
+`--clear` with no method and path clears every fault, including webhook faults. `mode clear` also clears every fault. See [`pikopod chaos`](/reference/cli/chaos).

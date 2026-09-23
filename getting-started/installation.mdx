@@ -1,0 +1,94 @@
+---
+title: Installation
+description: One static binary for macOS, Linux and Windows. No runtime, no daemon, no account.
+---
+
+pikopod is a single static binary built with `CGO_ENABLED=0`. It has no dependencies, needs no root, and writes only to the directory you point it at.
+
+## Install
+
+<Tabs>
+  <Tab title="Go">
+    Requires Go at the version `go.mod` declares (1.27 today).
+
+    ```bash
+    go install github.com/pikopod/pikopod/cmd/pikopod@latest
+    ```
+  </Tab>
+  <Tab title="Homebrew">
+    Recent Homebrew requires third-party taps to be trusted explicitly. Without the first line it refuses to load the formula and reports `Invalid formula`. The formula is fine, the tap is simply not trusted yet.
+
+    ```bash
+    brew trust pikopod/tap
+    brew install pikopod/tap/pikopod
+    ```
+  </Tab>
+  <Tab title="Release binary">
+    Every release ships static binaries for macOS, Linux and Windows on amd64 and arm64. Pin a version in scripts rather than floating on latest.
+
+    ```bash
+    VERSION=0.1.1
+    curl -fsSL "https://github.com/Pikopod/pikopod/releases/download/v${VERSION}/pikopod_${VERSION}_linux_amd64.tar.gz" | tar xz
+    ./pikopod --version
+    ```
+
+    Archive names follow `pikopod_<version>_<os>_<arch>.tar.gz` (`.zip` on Windows). Releases also carry `.deb` and `.rpm` packages and an SBOM per archive.
+  </Tab>
+  <Tab title="Container">
+    The image is `FROM scratch`: the binary and nothing else. It runs as an unprivileged user and has no shell.
+
+    ```bash
+    docker run --rm ghcr.io/pikopod/pikopod:latest --version
+    ```
+
+    Mount a directory for `pikopod.yaml` and `data_dir` when you run `up`. The image is a convenience; the primary artifact is the static binary.
+  </Tab>
+</Tabs>
+
+## Verify a release
+
+Every release ships `SHA256SUMS`, signed with cosign, with SLSA provenance. This is the canonical verification command. It lives in one place on purpose: a copy that drifts out of case or loses its anchor still runs and still passes.
+
+```bash
+sha256sum -c SHA256SUMS --ignore-missing   # macOS without coreutils: shasum -a 256 -c
+cosign verify-blob --certificate SHA256SUMS.pem --signature SHA256SUMS.sig SHA256SUMS \
+  --certificate-identity-regexp '^https://github.com/Pikopod/pikopod/\.github/workflows/release\.yml@refs/tags/' \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com
+```
+
+Two details are the whole point:
+
+- **The organisation is `Pikopod`, capitalised.** cosign matches the identity case-sensitively. A lowercase regexp matches nothing, and cosign reports that as a verification failure rather than a typo.
+- **The regexp is anchored** to the release workflow and to `refs/tags/`. An unanchored pattern matches any workflow in any repository whose identity URL contains the substring.
+
+The Go module path is `github.com/pikopod/pikopod`, lowercase, because that is what `go.mod` declares. Both spellings are correct in their own context.
+
+## Check it works
+
+```bash
+pikopod --version
+pikopod demo
+```
+
+`demo` starts a fake provider in-process, sends traffic through the agent, changes the provider's responses, and prints the alerts. It takes about a second and needs no config file.
+
+## Build from source
+
+```bash
+git clone https://github.com/pikopod/pikopod.git
+cd pikopod
+go build ./...
+go run ./cmd/pikopod demo
+```
+
+There is no code generation step and no toolchain beyond Go. See [Development](/project/development) for the test loop and project layout.
+
+## Supported platforms
+
+| Platform | Tested in CI | Shipped |
+|---|---|---|
+| Linux amd64, arm64 | Yes | Binary, deb, rpm, container |
+| macOS amd64, arm64 | Cross-compiled | Binary, Homebrew |
+| Windows amd64, arm64 | Cross-compiled | Binary (zip) |
+
+CI runs the test suite on Linux only. macOS and Windows are cross-compiled with `go build`.

@@ -1,0 +1,41 @@
+---
+title: pikopod pr
+description: Post findings to a pull request, or open one carrying a fix.
+---
+
+Both commands take the forge flags `--platform github|gitlab`, `--repo`, `--number`, `--sha` and `--api`, all detected from the CI environment by default. Credentials come from `GITHUB_TOKEN`, `GH_TOKEN`, a logged-in `gh` CLI, or `GITLAB_TOKEN`. Neither command needs `pikopod.yaml`.
+
+## pr comment
+
+```text
+pikopod pr comment --handoff <path>
+```
+
+Post one marker-tagged comment from a handoff file written by `spec-diff`, `replay --ci`, `conformance` or `spec-update`, updated in place on re-runs.
+
+```text
+comment created (source spec-diff, github)
+```
+
+When the token cannot comment, the report goes to the job summary or to stdout and the command still exits `0`.
+
+## pr open
+
+```text
+pikopod pr open --commit <file> [--commit <file>...] [--handoff <path>] [flags]
+```
+
+| Flag | Meaning |
+|---|---|
+| `--commit <file>` | A file to commit on the PR branch, already modified in the working tree. Repeatable. Required. |
+| `--handoff <path>` | JSON handoff whose rendering becomes the PR body. |
+| `--branch <name>` | Default `pikopod/update-<timestamp>`. |
+| `--base <name>` | Default: origin's HEAD, else `main`. |
+| `--title <text>` | Default `pikopod: traffic-evidenced spec update`. |
+| `--dry-run` | Print the git and PR plan without executing. |
+
+```text
+PR opened: https://github.com/acme/payments/pull/128
+```
+
+See [Pull requests](/reproduce/pull-requests).

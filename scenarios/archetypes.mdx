@@ -1,0 +1,80 @@
+---
+title: Archetypes
+description: Eleven provider-agnostic failure stories that bind themselves to your API from its spec.
+---
+
+You usually do not write a pack by hand. pikopod ships eleven archetypes, and `scenario list` shows which of them your API supports, with the reason for each that it does not.
+
+```bash
+pikopod scenario list examplepay
+```
+
+```text
+archetypes vs examplepay (4 endpoints):
+  ✓ happy_path                 Happy path  (1 candidate binding(s))
+  ✓ unauthorized               Unauthorized  (4 candidate binding(s))
+  ✓ invalid_request            Invalid request  (1 candidate binding(s))
+  ✗ duplicate_delivery         Duplicate delivery
+      no webhookEvent matching {} for role 'emittedEvent'
+  ✓ rate_limit_backoff         Rate limit and backoff  (4 candidate binding(s))
+  ✓ state_transition_sequence  State transition sequence  (1 candidate binding(s))
+  ✓ retry_storm                Retry storm with recovery  (1 candidate binding(s))
+  ✓ declines                   Declines  (1 candidate binding(s))
+  ✓ timeouts                   Timeouts  (1 candidate binding(s))
+  ✓ partial_failure            Partial failure  (1 candidate binding(s))
+  ✓ downtime_recovery          Downtime and recovery  (1 candidate binding(s))
+```
+
+## The eleven
+
+Each archetype declares roles, and each role names the facts an operation must have in the spec to fill it.
+
+| Archetype | Story | Roles and what they need |
+|---|---|---|
+| `happy_path` | A documented collection read returns a success response. | `op`: a list operation with a declared success response |
+| `unauthorized` | A secured operation rejects a request with no credential. | `op`: an operation that requires auth |
+| `invalid_request` | A create with a missing required field is rejected with a 4xx. | `op`: a create with a declared 4xx response |
+| `duplicate_delivery` | A webhook delivered twice. Does the client dedupe? | `createOp`: a create with a success response; `emittedEvent`: a declared webhook event with a trigger |
+| `rate_limit_backoff` | Under rate limiting the sandbox emits 429; the client must back off. | `op`: any operation with a success response |
+| `state_transition_sequence` | A resource is created then transitioned; the state must follow. | `createOp`: a create; `updateOp`: an update on the same resource with an enum field |
+| `retry_storm` | The provider fails the first two attempts under one idempotency key, then recovers on the third. | `createOp`: a create with a success response |
+| `declines` | A create that succeeded starts declining with a 400; after the condition clears, service recovers. | `op`: a create with a success response |
+| `timeouts` | A read suffers 30 seconds of provider latency, virtualized, but still succeeds. Your timeout budget is the assertion. | `op`: a list operation |
+| `partial_failure` | Reads fail mid-sequence with 503, but state written before the outage stays consistent and reads recover. | `op`: a list operation |
+| `downtime_recovery` | The provider goes fully down with 503s, stays down five virtual minutes, then recovers. | `op`: a list operation |
+
+## What each one runs
+
+Every archetype expands into ordinary steps against the operations it bound to.
+
+| Archetype | Steps |
+|---|---|
+| `happy_path` | `call` |
+| `unauthorized` | `unauth` (a request with no credential) |
+| `invalid_request` | `invalid` (a create missing a required field) |
+| `duplicate_delivery` | `create`, `await1`, `duplicate` (arm `duplicate_webhook`), `await2` (assert the event was delivered twice) |
+| `rate_limit_backoff` | `arm` (429), `call`, `backoff` (wait), `clear`, `retry`, `backed-off` (verify the sequence and gap) |
+| `state_transition_sequence` | `create`, `transition`, `verify` (assert state) |
+| `retry_storm` | `arm` (error, twice), `attempt1`, `attempt2`, `attempt3` |
+| `declines` | `arm-decline` (400, once), `declined`, `clear`, `recovered` |
+| `timeouts` | `arm-latency` (30 s), `slow-read`, `clear`, `fast-again` |
+| `partial_failure` | `seed`, `arm-outage` (503), `read-fails`, `state-intact`, `clear`, `read-recovers` |
+| `downtime_recovery` | `arm-outage` (503), `down`, `still-down`, `outage-window` (wait five virtual minutes), `clear`, `recovered`, `outage-shape` (verify the sequence) |
+
+Run one with its id, and several at once:
+
+```bash
+pikopod scenario run examplepay declines timeouts partial_failure
+```
+
+## Two subjects
+
+Most archetypes assert on the **sandbox**: what it answered. Two also assert on the **client**: `duplicate_delivery` counts what your handler received, and `rate_limit_backoff` and `retry_storm` verify the order and spacing of what your code sent. When you run these as a [mode](/sandbox/modes) against your own application, the request journal is what those claims are checked against.
+
+## When one does not bind
+
+It says why, and the answer is real: a read-only API has no duplicate-delivery story, and a spec that declares no 4xx cannot support `invalid_request`. See [Binding](/scenarios/binding) for the reasons and for asserting a fact with `--bind`.
+
+## On a real spec
+
+Every example in these docs uses a fictional `examplepay`. On a large public payments spec with hundreds of operations, eight of the eleven bind and three refuse, one of them because the spec declares no 4xx response on any of its POST operations: errors go through `default`. That is the doctrine working on somebody else's real spec, and it is checkable with `jq`.

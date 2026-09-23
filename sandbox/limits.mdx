@@ -1,0 +1,44 @@
+---
+title: Limits
+description: Quotas and bounds on the sandbox, fixed rather than configured.
+---
+
+## Storage quotas
+
+| Limit | Value |
+|---|---|
+| Stored resources per sandbox | 10,000 |
+| Total storage per sandbox | 100 MiB |
+| Single resource | 256 KiB |
+
+Exceeding them returns `413` or `507` rather than degrading silently. Reset a sandbox's state with `pikopod sandbox reset <name>`.
+
+## Request journal
+
+Newest 1024 entries, 64 headers and 64 query values per entry, 16 KiB of body. Eviction is reported and assertions across the gap fail closed. See [Request journal](/sandbox/request-journal).
+
+## Faults
+
+Every delay is capped at 60 seconds. `times` windows are tracked per key up to a bounded number of keys; beyond it, unseen keys count as recovered.
+
+## Import
+
+| Limit | Value |
+|---|---|
+| Spec document | 32 MiB |
+| GraphQL schema | 5 MiB, depth 32 |
+| Container nesting depth | 200 |
+| `$ref` files across a multi-file spec | 64 files, 32 MiB in total |
+| Documentation prose sent for model extraction | 240 KB |
+
+## Scenario packs
+
+1 MiB per file, 200 steps, 50 assertions per step, 1000 assertions total, 1000 seeded resources, 50 inputs, 90 virtual days of accumulated waits. See [Pack format](/scenarios/pack-format#limits).
+
+## Control plane
+
+Request bodies to `/_pikopod/` endpoints are read up to 1 MiB.
+
+## What is not modelled
+
+Provider business logic behind action endpoints, real rate limiting (it is injectable, not modelled), and pagination beyond `limit` and `cursor`. The sandbox rehearses shape and failure paths; it is not a clone. See [Sandbox](/sandbox/overview#honest-about-its-limits).

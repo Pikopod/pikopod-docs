@@ -1,0 +1,56 @@
+---
+title: Environment variables
+description: Every variable pikopod reads, and what it overrides.
+---
+
+Environment variables override `pikopod.yaml`. None of them is ever accepted as a command-line argument, because argv is visible to every user on the machine.
+
+## Runtime
+
+| Variable | Overrides |
+|---|---|
+| `PIKOPOD_LISTEN` | `listen` |
+| `PIKOPOD_DATA_DIR` | `data_dir` |
+| `PIKOPOD_TOKEN` | The listener token. Wins over `token_file`. |
+| `PIKOPOD_DEBUG` | Verbose diagnostics |
+
+## Model key
+
+| Variable | Overrides |
+|---|---|
+| `PIKOPOD_LLM_KEY` | `llm.api_key` |
+
+The key is resolved once, in this order: `llm.api_key` in the file, then `PIKOPOD_LLM_KEY`, then the standard variable of the provider named in `llm.provider`. A key stored in the file requires the file to be mode `0600`. A key in the environment does not.
+
+The key is optional and only three features use it: `scenario create`, `fix`, and a documentation-URL import that could not find a spec any other way. See [Configuration](/operations/configuration#llm).
+
+## Webhook signing
+
+| Variable | Read by |
+|---|---|
+| The variable named by `signature.keyEnv` in a webhook envelope, for example `EXAMPLEPAY_WEBHOOK_KEY` | `pikopod up`, when a sandbox has a webhook sink and its spec declares a signature. `up` refuses to start without it. |
+
+The key is never written to disk.
+
+## Forge credentials
+
+Read by `pikopod pr comment`, `pikopod pr open` and `pikopod fix --pr`.
+
+| Variable | Use |
+|---|---|
+| `GITHUB_TOKEN`, then `GH_TOKEN`, then a logged-in `gh` CLI | GitHub |
+| `GITLAB_TOKEN` | GitLab, `api` scope |
+
+## CI detection
+
+Platform, repository, pull request number and head SHA default from the CI environment, so `pr comment` needs no flags inside a pipeline.
+
+| Variable | Read as |
+|---|---|
+| `GITHUB_ACTIONS=true` | platform `github` |
+| `GITHUB_REPOSITORY`, `GITHUB_SHA`, `GITHUB_REF` | repository, sha, PR number |
+| `GITHUB_STEP_SUMMARY` | Where `pr comment` writes the report when the token cannot comment |
+| `GITLAB_CI=true` | platform `gitlab` |
+| `CI_PROJECT_ID`, `CI_PROJECT_PATH`, `CI_COMMIT_SHA`, `CI_MERGE_REQUEST_IID`, `CI_API_V4_URL` | project, sha, MR iid, API base |
+
+Pass `--platform`, `--repo`, `--number`, `--sha` and `--api` to override any of them outside CI.

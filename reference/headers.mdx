@@ -1,0 +1,29 @@
+---
+title: Headers
+description: The request and response headers pikopod reads, sets, and strips.
+---
+
+## Both listeners
+
+| Header | Direction | Meaning |
+|---|---|---|
+| `X-Pikopod-Token` | Request | Required on every request when a token is configured. Stripped before anything is forwarded or recorded, in every configuration. |
+
+## The agent
+
+| Header | Direction | Meaning |
+|---|---|---|
+| `X-Pikopod-Error: upstream-unreachable` | Response | Set on the `502` the agent answers when it cannot reach the upstream. The request is never retried. This is what marks an `upstream_unreachable` incident. |
+| `Host` | Request | Rewritten to the upstream's host on the way out. On a tokenless listener, a non-local `Host` is refused with `403`. |
+
+Everything else is forwarded unmodified. On the recording side, `Authorization`, `Proxy-Authorization`, `X-Api-Key`, `X-Auth-Token` and signature headers are replaced by placeholders, `Cookie` and `Set-Cookie` are dropped, and `Content-Type`, `Accept`, `Content-Length`, `User-Agent`, `Accept-Encoding`, `Retry-After`, `X-RateLimit-Remaining`, `X-Request-Id` and `traceparent` are kept. The wire is untouched by any of this.
+
+## The sandbox
+
+| Header | Direction | Meaning |
+|---|---|---|
+| `x-pikopod-contract-version` | Response | The overlay version the response was rendered from. `0` when the sandbox serves the spec contract only. |
+| `X-Pikopod-Replay-Tier` | Response | Set when a response came from the recordings tier: `exact`, `shape` or `sequence`. See [Recordings tier](/sandbox/recordings-tier). |
+| `Link` | Response | Pagination links on list endpoints, with the sandbox's mount prefix. |
+
+Webhook deliveries carry the headers the provider's envelope declares. Without an envelope, deliveries carry the default `x-pikopod-webhook-*` headers and the signing secret printed at import. See [Webhooks](/sandbox/webhooks).

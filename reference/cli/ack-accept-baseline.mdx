@@ -1,0 +1,42 @@
+---
+title: pikopod ack, accept, baseline
+description: Silence an alert, accept a drift as the new normal, or re-learn baselines.
+---
+
+## ack
+
+```text
+pikopod ack <fingerprint>
+```
+
+Acknowledge a drift alert. It stays silent until its diff changes, and a changed diff is a new fingerprint by construction. With the agent running, the acknowledgement is applied live. Offline, it is applied to the persisted alert state and takes effect on the next `pikopod up`.
+
+```text
+acked fp_6d540d187d44 — silenced until its diff changes (a changed diff is a new fingerprint)
+```
+
+## accept
+
+```text
+pikopod accept <fingerprint>
+```
+
+Accept a drift: the current provider behaviour becomes the new baseline. The affected endpoint's baseline is refrozen from live traffic and the alert is acknowledged, so findings for it stop entirely. Needs `pikopod up`, because it refreezes the live baseline.
+
+```text
+accepted fp_6d540d187d44 — the drifted behavior is the baseline now; findings for it stop entirely
+```
+
+## baseline reset
+
+```text
+pikopod baseline reset <upstream>
+```
+
+Delete the upstream's learned baselines. Warmup restarts on the next traffic.
+
+```text
+baselines for examplepay reset — warmup restarts on next traffic
+```
+
+See [Alerts](/observe/alerts) and [Warmup and baselines](/observe/warmup-and-baselines).

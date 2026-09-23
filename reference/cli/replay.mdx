@@ -1,0 +1,35 @@
+---
+title: pikopod replay
+description: Gate builds offline on recorded traffic against frozen baselines.
+---
+
+```text
+pikopod replay --ci [upstreams...] [--handoff <path>]
+```
+
+Diffs each recorded response against its frozen baseline, entirely offline. With no upstream named, every configured upstream is gated. `--ci` is required.
+
+| Flag | Meaning |
+|---|---|
+| `--ci` | The CI gate. |
+| `--handoff <path>` | Also write the JSON findings here, for `pikopod pr comment`. |
+
+```text
+examplepay: 37 recordings gated (1 pre-warmup skipped) — 0 finding(s)
+clean — no drift against frozen baselines
+```
+
+```text
+examplepay: 37 recordings gated (1 pre-warmup skipped) — 1 finding(s)
+  DRIFT field_removed    GET /charges/{id}  refunded_at string
+
+drift found — failing the gate (exit 1)
+```
+
+| Exit | When |
+|---|---|
+| `0` | Clean. |
+| `1` | Drift found. |
+| `2` | No baselines or no recordings for an upstream. |
+
+See [Replay gate](/observe/replay-gate).

@@ -1,0 +1,67 @@
+---
+title: Observe
+description: A fail-open reverse proxy that forwards your traffic untouched and watches for failures and shape changes.
+---
+
+`pikopod up` serves the observing agent on `:4700`. Point your app's provider base URL at `http://127.0.0.1:4700/<upstream>` and the agent forwards everything to the real provider, unmodified, and observes afterwards.
+
+```bash
+pikopod init                                    # scaffold pikopod.yaml
+pikopod import examplepay --spec <spec-url>     # optional, links a contract to the upstream
+pikopod up                                      # sandbox :4600 · agent :4700
+```
+
+```yaml
+upstreams:
+  examplepay:
+    target: https://api.examplepay.com
+```
+
+## What it watches
+
+Two different things, on two different clocks.
+
+**Incidents.** The upstream answered 5xx, throttled you with a 429, or could not be reached at all. These are facts about one request, so they need no baseline and fire from the very first one. See [Incidents](/observe/incidents).
+
+**Drift.** The shape of a successful response changed: a field vanished, a type changed, a status value you had never seen arrived. This needs a baseline, so it stays quiet for the first 50 samples and 48 hours on purpose. A reference built from five responses has not seen your optional fields yet. See [Drift](/observe/drift) and [Warmup and baselines](/observe/warmup-and-baselines).
+
+Both produce an event with a stable fingerprint, and the fingerprint is the handle you feed back in:
+
+```bash
+pikopod incidents                                  # what has failed, newest first
+pikopod scenario reproduce fp_14835fa32dfb         # an incident becomes a local test
+pikopod scenario from-drift fp_385153d1776c        # a shape change becomes a pinned test
+```
+
+## What it never does
+
+- **It never slows your traffic.** It serves first and observes afterwards, through bounded, panic-isolated capture stages. Measured, not asserted: see [Data plane safety](/observe/data-plane-safety).
+- **It never retries.** An automatic retry in front of a payments API is a double-charge window. An unreachable upstream gets an honest 502.
+- **It never writes a raw payload.** Credentials become placeholders, identifiers become format-preserving tokens, and strings it cannot classify are dropped, before anything touches disk. See [Redaction](/observe/redaction).
+- **It never alerts on latency.** Latency is noisy and rarely provable from the bytes. Duration is recorded, never a finding.
+- **It never initiates network traffic of its own.** Slack, your forge, and your model provider are all things you configured.
+
+## Start with staging
+
+Drift needs a baseline. Letting the agent warm up somewhere low-stakes means the first thing production sees is a tool that has already been quiet for two days. Incidents fire either way.
+
+## The two sides cross
+
+A spec-diff tool reads what the provider published. Monitoring sees your traffic but throws response bodies away. pikopod holds both. Traffic evidence raises the severity of a declared change: the spec removed this endpoint, and you are still sending it 120 requests a day. A declared change downgrades an observed one to "documented, not silent". See [Spec watch](/observe/spec-watch).
+
+## What is in this section
+
+| Page | Answers |
+|---|---|
+| [Data plane safety](/observe/data-plane-safety) | Why it cannot slow or break your traffic, with the benchmark. |
+| [Redaction](/observe/redaction) | Exactly what reaches disk and what does not. |
+| [Warmup and baselines](/observe/warmup-and-baselines) | How normal is learned, then frozen. |
+| [Drift](/observe/drift) | The eight shape kinds and how they are graded. |
+| [Incidents](/observe/incidents) | The four failure kinds, and why 4xx is opt-in. |
+| [Alerts](/observe/alerts) | Dedupe, thresholds, Slack, ack and accept. |
+| [Volatile fields](/observe/volatile-fields) | Silencing values that churn by nature, without silencing shape. |
+| [Spec watch](/observe/spec-watch) | Re-fetching the provider's spec and joining it with traffic. |
+| [Contract](/observe/contract) | The traffic overlay and conformance. |
+| [State machine](/observe/state-machine) | The transitions a provider actually makes. |
+| [Replay gate](/observe/replay-gate) | Gating builds offline on recorded traffic. |
+| [Inspecting](/observe/inspecting) | `status`, `report` and `inspect`. |

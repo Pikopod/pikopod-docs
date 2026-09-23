@@ -1,0 +1,52 @@
+---
+title: pikopod incidents
+description: List recorded incidents and drift events, and export a bundle.
+---
+
+```text
+pikopod incidents [flags]
+```
+
+A reader, not a gate: exits `0` whether or not it found anything, and `2` only when the event log cannot be read.
+
+| Flag | Default | Meaning |
+|---|---|---|
+| `--only incidents\|drift` | both | Narrow to failed exchanges or to shape changes. |
+| `--kind <kind>` | | Filter by kind, such as `upstream_error`. |
+| `--upstream <name>` | | Filter by upstream. |
+| `--since <duration>` | | Only events last seen within this window, such as `24h`. |
+| `--limit <n>` | 50 | Maximum events to show. Truncation is always reported. |
+| `--format text\|json` | `text` | |
+
+## Text
+
+```text
+[] incident upstream_error         POST /charges (examplepay) · 4 occurrence(s) · last 2026-09-19T10:00:00Z
+  fp_14835fa32dfb
+  reproducible until 2026-09-26T10:00:00Z
+  reproduce: pikopod scenario reproduce fp_14835fa32dfb
+  export: pikopod incidents export fp_14835fa32dfb
+```
+
+Newest first by last seen. `reproducible until` appears on incidents when retention is configured.
+
+## JSON
+
+```json
+{
+  "schema_version": "2",
+  "total_matching": 1,
+  "truncated": false,
+  "events": [ { "fingerprint": "fp_14835fa32dfb", "...": "" } ]
+}
+```
+
+`total_matching` and `truncated` are always present, so a shortened list can never be mistaken for a clean one. Events follow the [drift event schema](/reference/drift-event-schema).
+
+## incidents export
+
+```text
+pikopod incidents export [fingerprint] [--since <duration>]
+```
+
+Writes a self-contained bundle to stdout: the event, the already-redacted recording and the contract version. No salt, no token, no configuration. One fingerprint writes one bundle; `--since` writes a JSON array of every incident in the window. See [Incident bundles](/reproduce/incident-bundles) and the [bundle format](/reference/incident-bundle).

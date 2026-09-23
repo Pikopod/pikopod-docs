@@ -1,0 +1,45 @@
+---
+title: State machine
+description: The transitions a provider actually makes, learned from traffic. Nothing in a specification can say this.
+---
+
+```yaml
+behaviour:
+  enabled: true
+```
+
+Off by default. When enabled, the agent learns the provider's observed state machine: for each resource it sees more than once (a path with an identifier segment, such as `/charges/{id}`), every low-cardinality string field whose value changed between two recordings records an edge, `pending → succeeded`, with a count.
+
+## Reading it
+
+```bash
+pikopod contract examplepay
+```
+
+```text
+observed state machine — examplepay
+
+  GET /charges/{id} · status          (412 transitions over 9 days)
+    pending      → succeeded      380
+    pending      → failed          31
+    succeeded    → refunded         1     ← seen once
+    never observed: failed → pending, succeeded → pending
+
+"never observed" is an absence in recorded traffic, not a rule the provider follows; nothing here is enforced
+```
+
+`never observed` lists every ordered pair of observed states with no recorded edge, and appears only once the field has cleared both warmup gates. It is never a claim that the provider cannot make the transition. **Nothing here is enforced**: the sandbox is untouched, and no alert is raised from it.
+
+`--format json` includes the graph.
+
+## What is stored
+
+Only the aggregate graph: field paths, value pairs, counts and timestamps, under `<data_dir>/apis/<upstream>.behaviour.json`. The previous value per resource lives in a bounded in-memory cache and is never written, so a restart loses in-flight edges rather than persisting per-resource data.
+
+## What is excluded
+
+- Endpoints with no path parameter, because there is no resource to follow.
+- The identifier itself.
+- Fields the sanitizer tokenized or dropped.
+- Fields matched by `volatile_fields`, and templates under `mute`.
+- Fields that show more than 24 distinct values, or more than 64 distinct edges. They latch and are never tracked again: a high-cardinality field is not a state machine.

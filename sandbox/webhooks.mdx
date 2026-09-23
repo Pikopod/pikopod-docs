@@ -1,0 +1,101 @@
+---
+title: Webhooks
+description: Deliveries wrapped and signed the way the provider documents, for events the spec declares and only those.
+---
+
+A sandbox delivers webhooks to the sink you configure, signed, so the same handler serves pikopod and production.
+
+```bash
+pikopod import examplepay --spec examplepay.yaml --webhook-url http://localhost:3000/hooks/examplepay
+```
+
+## Which events fire, and when
+
+Only **declared** events can be delivered. The sandbox never emits an event the spec does not declare: an invented event is indistinguishable at your handler from a real delivery, which makes it worse than silence.
+
+An event fires in one of two ways:
+
+- **Triggered by a call.** Declare `x-pikopod-trigger: {method, path}` on the event in the spec, or bind it in the sidecar. When that operation succeeds, the event is delivered with the documented payload.
+- **Emit-only.** Some events follow no API call: money landing in an account, a chargeback, a KYC decision. Declare `x-pikopod-emit-only: true` and fire them on demand:
+
+```bash
+pikopod webhook emit examplepay transaction.created --data @transaction.json
+```
+
+`--data` is overlaid onto the documented payload shape, so your values reach a nested payload rather than being replaced by synthesis. A scenario fires one with an `EMIT_WEBHOOK` step, and a coding agent with `emit_webhook`.
+
+A declared event with neither a trigger nor an emit-only mark is flagged at import, because it would never fire.
+
+## The default delivery
+
+Without an envelope, each delivery is a POST of the documented payload with:
+
+| Header | Value |
+|---|---|
+| `x-pikopod-webhook-id` | The delivery id |
+| `x-pikopod-webhook-event` | The event name |
+| `x-pikopod-webhook-timestamp` | Unix seconds, virtual clock |
+| `x-pikopod-webhook-signature` | `sha256=` plus hex HMAC-SHA256 over `<timestamp>.<payload>` with the secret printed at import |
+
+Delivery ids derive from the sandbox seed and the delivery sequence, so a restarted sandbox re-issues the same ids in the same order. That is what makes a transcript replay byte for byte. It also means a handler that dedupes on the id across restarts treats fresh deliveries as replays; change the seed when you want a fresh id stream.
+
+## The provider's envelope
+
+Handlers verify the provider's signature over the provider's wire shape. Declare that shape once, as a top-level `x-pikopod-webhook-envelope` in the spec or, for a spec you do not control, in a sidecar file:
+
+```yaml
+# examplepay-webhooks.yaml
+wrap:
+  timestamp: "{{now_rfc3339}}"
+  payload: "{{json_string body}}"
+signature:
+  algorithm: hmac-sha256        # or hmac-sha512
+  content: "{{timestamp}}{{payload}}"
+  keyEnv: EXAMPLEPAY_WEBHOOK_KEY
+  keyEncoding: base64           # raw (default), base64 or hex
+  output: base64                # base64 (default) or hex
+  in: body                      # body or header
+  name: signature
+events:
+  payment_intent.completed: { trigger: { method: POST, path: /intent-actions } }
+  payment_intent.failed:    { emitOnly: true }
+```
+
+```bash
+export EXAMPLEPAY_WEBHOOK_KEY=<the key the provider issued>
+pikopod import examplepay --spec examplepay.yaml --webhooks examplepay-webhooks.yaml --webhook-url http://localhost:3000/hooks/examplepay
+```
+
+- **`wrap`** builds the body. Each field is a template, and a field that is exactly `{{body}}` embeds the documented payload as JSON. Without `wrap` the body is the payload itself, sent verbatim.
+- **`headers`** adds request headers the same way.
+- **`signature`** signs the rendered `content` with the key in `$keyEnv` and places the result in a body field or a header. `format` (for example `v1={{signature}}`) shapes the value.
+- **`events`** binds events to the calls that cause them, which a docs import cannot know, and marks the ones no call causes. Only declared events and declared operations are accepted.
+
+Templates are a closed set: `{{body}}`, `{{json_string body}}`, `{{event}}`, `{{id}}`, `{{timestamp}}` (unix seconds), `{{timestamp_ms}}`, `{{now_rfc3339}}`, `{{uuid}}`, plus the `wrap` field names inside `headers` and `content`. Time is the virtual clock and `{{uuid}}` derives from the seed, so a run replays byte for byte. Anything else is refused at import, naming the field.
+
+The key is never stored. `pikopod up` reads it from the named variable and refuses to start without it when a sink is configured. Once an envelope is declared, the default `x-pikopod-webhook-*` headers are not sent.
+
+Attach or change the file on an existing sandbox without re-importing:
+
+```bash
+pikopod sandbox webhooks examplepay examplepay-webhooks.yaml
+```
+
+A later `import --update` keeps these bindings for every event it declares again.
+
+## Seeing what was delivered
+
+```bash
+pikopod webhook list examplepay
+```
+
+```text
+1    charge.succeeded                 sbxd_5d2e7f1a9c04b3e8a17f6c02  t=1735689612
+1 delivered, sink: 1 delivered, 0 failed, 0 dropped
+```
+
+When the sink refused a delivery, the last failure is shown. `scenario run` prints the same sink summary after each scenario. The control plane exposes it at `GET /_pikopod/sandboxes/<name>/webhooks`.
+
+## Misdelivery on purpose
+
+`duplicate_webhook`, `drop_webhook`, `reorder_webhook` and `delay_webhook` are faults matched by event. The `duplicate_delivery` archetype uses the first to ask whether your handler dedupes. See [Faults](/sandbox/faults#webhook-faults).

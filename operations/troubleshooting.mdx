@@ -1,0 +1,93 @@
+---
+title: Troubleshooting
+description: Every pikopod error names what failed, why, the next action, and a docs link.
+---
+
+Errors follow one shape on stderr and exit `2`:
+
+```text
+error: <what>: <why> → <fix> → <docs link>
+```
+
+Start with `pikopod doctor`. It loads the config, checks that `data_dir` is writable and the salt is usable, checks that the agent port is free or already pikopod, and sends a `HEAD` request to every upstream target.
+
+```text
+  ✓ pikopod.yaml loads
+  ✓ data dir writable
+  ✓ salt present or creatable
+  ✓ agent port free or agent already running
+  ✓ upstream examplepay reachable (https://api.examplepay.com)
+all checks passed — point your app at the agent and run `pikopod up`
+```
+
+## Configuration
+
+| Message | What to do |
+|---|---|
+| `no configuration found` | Run `pikopod init`, or pass `--config <path>`. Every command accepts `--config`. |
+| `configuration is not valid` | The message names the unknown key or the YAML syntax error. Unknown keys are rejected on purpose. |
+| `refusing to bind <addr> without a token` | Set `PIKOPOD_TOKEN` or `token_file`, or keep `listen: 127.0.0.1`. |
+| `token file is readable by other users` | `chmod 600` the token file. |
+| `pikopod.yaml contains an llm API key but is readable by other users` | `chmod 600 pikopod.yaml`, or move the key to `PIKOPOD_LLM_KEY`. |
+| `tokenization salt is readable by other users` | `chmod 600 <data_dir>/.salt`. |
+| `no upstreams configured` | Add at least one provider under `upstreams`. |
+
+## Sandbox
+
+| Message | What to do |
+|---|---|
+| `the sandbox server is not running` | Start `pikopod up`. `chaos`, `mode`, `webhook` and `sandbox requests` talk to the running sandbox. |
+| `unknown sandbox` | `pikopod sandbox list` shows what is registered. |
+| `sandbox already exists` | Use `pikopod sandbox reset <name>` to clear its state, `pikopod import <name> --update` to re-import, or pick another name. |
+| `no spec given` | Pass `--spec <file-or-url>`. |
+| `cannot fetch the spec` | Check the URL serves the raw document and that your network can reach it. |
+| `webhook signing key missing for <name>` | Export the variable the envelope's `keyEnv` names, then run `pikopod up` again. |
+| `chaos needs a target operation` | Pass `--method` and `--path` using the path template exactly as the spec declares it. |
+| `the sandbox refused this mode` | `pikopod scenario list <sandbox>` shows which scenarios bind. A scenario whose first step is a request has no standing state to enter. |
+| `401` from the sandbox on every request | Send the issued test credential the way the spec's auth scheme expects. `pikopod sandbox list` prints it. |
+
+## Scenarios
+
+| Message | What to do |
+|---|---|
+| `unknown scenario` | The name is neither an archetype nor a pack in `./scenarios` or `<data_dir>/scenarios`. |
+| `archetype does not apply` or `no candidate binding grounds` | A real answer, not a failure. See [Binding](/scenarios/binding). |
+| `every candidate rests on extracted facts only; assert a role with --bind` | The sandbox came from a docs import. Pass the `--bind` line `scenario list` printed. |
+| `pack does not ground against this sandbox's API` | The pack references operations this sandbox does not have. Check the step's method and path against `scenario list`. |
+| `step N (TYPE) cannot run against a remote target` | With `--target`, only `REQUEST`, `NOTE` and `SNAPSHOT` steps are allowed. |
+| `scenario pack is too large` | Split the scenario or trim seed data. See [Pack format](/scenarios/pack-format#limits). |
+| `plain-English scenario drafting is disabled` | `scenario create` needs a model key. Deterministic packs and archetypes work without one. |
+
+## Spec diff and CI
+
+| Message | What to do |
+|---|---|
+| `cannot read watched spec file` on a `git:` looking source | The `git:` prefix is required: `git:origin/main:openapi.yaml`. |
+| `git refuses to read this checkout` | Run `git config --global --add safe.directory "$GITHUB_WORKSPACE"` before pikopod. |
+| `SPEC_REF_UNRESOLVABLE` | A remote, absolute or escaping `$ref`. Vendor the referenced document and use a relative path. See [Multi-file specs](/gate/multi-file-specs). |
+| `cannot normalize <source>` | The document did not parse as OpenAPI 3.x, Swagger 2.0, Postman or GraphQL. |
+| `cannot detect the platform` | Outside CI, pass `--platform`, `--repo` and `--number` to `pr comment`. |
+| `no GitHub credential` | Export `GITHUB_TOKEN`, or log in with `gh auth login`. |
+
+## Agent and observation
+
+| Message | What to do |
+|---|---|
+| `agent is not running` | `status`, `accept` and the live path of `ack` need `pikopod up`. |
+| `no baselines for <upstream>` | Warmup has not completed. Run `pikopod up`, send traffic, and check `pikopod status`. |
+| `no recordings for <upstream>` | Nothing has been proxied yet. Point your app at `http://127.0.0.1:4700/<upstream>`. |
+| `unknown fingerprint` | Copy the `fp_…` from the alert or from `pikopod incidents`. |
+| `impact for <fp> is UNVERIFIABLE` | `fix` found no literal occurrence of the field. Re-run with `--dir`, or search yourself. Not proof the field is unused. |
+| `the sandbox did not reproduce this failure` | The recorded body is redacted, and a 4xx usually depends on it. Compare the pack with what your code actually sends. |
+| `no recording for this incident` | Retention aged it out. Raise `retention.max_age_hours`, or reproduce from a newer occurrence. |
+
+## The process
+
+- **Traffic stops when the agent dies.** Run it under a supervisor with `/healthz` as the liveness probe.
+- **`/healthz` shows `{"status":"ok"}` only.** A token is set and the request did not carry it. Send `X-Pikopod-Token` for the full payload.
+- **A 403 mentioning a DNS-rebinding guard.** A tokenless listener received a request with a non-local `Host` header. Set a token to serve other hostnames.
+- **Two agents on one `data_dir`.** Baselines are single-writer. Run one agent. See [Deployment](/operations/deployment).
+
+## Verbose diagnostics
+
+Set `PIKOPOD_DEBUG=1` for verbose output. Include the provider, the spec you imported, what pikopod said, and what you expected when [filing an issue](https://github.com/pikopod/pikopod/issues). `pikopod inspect` shows what is safe to share.

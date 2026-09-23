@@ -1,0 +1,55 @@
+---
+title: pikopod why
+description: Replay a request against a fork of the sandbox with decision tracing, and see exactly why it answers what it answers.
+---
+
+```text
+pikopod why <sandbox> <METHOD> <path> [--body <json>] [--auth=false]
+```
+
+Runs the request in-process against an ephemeral fork of the sandbox's current state, with the narrator on. No real state is touched and no server is needed. Deterministic replay means the trace is the truth, not an approximation.
+
+| Flag | Meaning |
+|---|---|
+| `--body <json>` | A JSON request body. |
+| `--auth` | Send the sandbox's issued credential. Default true. Pass `--auth=false` to see the refusal path. |
+
+```bash
+pikopod why examplepay POST /charges --body '{"amount": 1250, "currency": "NGN"}'
+```
+
+```text
+replaying POST /charges against a fork of examplepay (seed 1f41d4ff6d02c840) — no real state is touched
+
+  auth       sending the issued credential in authorization
+  faults     no armed fault fired
+  route      matched createCharge
+  auth       declared auth satisfied
+  operation  kind=create resource=/charges
+
+→ 201
+  Content-Type: application/json; charset=utf-8
+  Etag: "0"
+  X-Pikopod-Operation: createCharge
+
+{"amount":1250,"currency":"NGN","id":"charges_1","status":"failed"}
+```
+
+```bash
+pikopod why examplepay GET /charges --auth=false
+```
+
+```text
+  faults     no armed fault fired
+  route      matched listCharges
+  auth       declared auth REFUSED the request (401) — the issued credential is in `pikopod sandbox list`
+
+→ 401
+  Content-Type: application/json; charset=utf-8
+  Www-Authenticate: Bearer
+  X-Pikopod-Operation: listCharges
+
+{"message":"Authentication required"}
+```
+
+The path must be provider-relative and start with `/`. Bodies longer than 2000 characters are truncated in the output.

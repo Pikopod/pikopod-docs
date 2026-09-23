@@ -1,0 +1,40 @@
+---
+title: pikopod mode
+description: Put a running sandbox into a scenario's standing failure state, and run your own tests against it.
+---
+
+`pikopod scenario run` drives its own requests against a throwaway engine, so your application is never in the loop. A mode is the other half: it arms the scenario's standing conditions on the sandbox `pikopod up` is serving, and then your own tests, your own app, or plain curl meet the failure.
+
+A mode is global to the sandbox and stays until cleared. Two test suites running against one sandbox see each other's faults, and a fault with a `times` window counts down across both. Run one suite at a time against a given sandbox, or give each its own `pikopod up` on a different port. Needs `pikopod up`.
+
+## mode set
+
+```text
+pikopod mode set <sandbox> <scenario> [--bind role=operationId]
+```
+
+```text
+mode: timeouts (from archetype or pack timeouts)
+  armed   latency on GET /charges
+point your app at the sandbox and run your own tests; clear it with `pikopod mode clear examplepay`
+```
+
+A scenario whose first step is a request has no standing state and is refused with the reason. `--bind` overrides a role binding, repeatable.
+
+## mode show
+
+```text
+pikopod mode show <sandbox>
+```
+
+Prints the standing state, or `no mode set`.
+
+## mode clear
+
+```text
+pikopod mode clear <sandbox>
+```
+
+Leaves the standing state and clears every fault on the sandbox.
+
+See [Modes](/sandbox/modes).

@@ -1,0 +1,55 @@
+---
+title: Drift
+description: A successful response whose shape changed against the frozen baseline.
+---
+
+Drift is about a **successful** response whose shape changed. It needs a frozen baseline, so it is silent during warmup. A request that simply failed is an [incident](/observe/incidents), which needs no baseline at all.
+
+## The eight kinds
+
+| Kind | Fires when | Level |
+|---|---|---|
+| `field_added` | A field appeared that the reference never had. | `INFO` |
+| `field_removed` | A field present in at least 98% of reference samples is gone. | `ERR` |
+| `type_changed` | A field arrived with a type the reference never saw. | `ERR` |
+| `enum_value_new` | A low-cardinality string field carried a value outside the known set. | `WARN` |
+| `field_nullable` | A never-null field arrived null. Its own kind, because it is a different break with a different fix. | `ERR` |
+| `status_code_changed` | The exact code moved within a known class, such as 200 to 201. | `ERR` |
+| `status_new` | A status class this endpoint had never returned. | `ERR` |
+| `error_shape_changed` | A 4xx or 5xx body was restructured. Collapsed to one finding rather than a flood of adds and removes. | `ERR` |
+
+The level is graded by what breaks consumers: something removed or retyped is `ERR`, a new value is `WARN`, something purely additive is `INFO`. A finding the provider's new spec documents is downgraded to `INFO` with a note saying so. See [Spec watch](/observe/spec-watch).
+
+## The smallest example
+
+One letter changes, and `if status == "success"` quietly stops matching:
+
+```text
+[WARN] pikopod drift — new value on GET /transaction/tx_{id} (examplepay)
+status: value "succeeded" not in known set [success]
+fingerprint fp_385153d1776c · first seen 2026-09-11T00:08:54Z · 3 occurrence(s)
+replay it: pikopod scenario from-drift fp_385153d1776c
+```
+
+Nobody's changelog mentioned it. The fingerprint on that line is the handle you feed back in.
+
+## Fingerprints
+
+A fingerprint is `fp_` plus twelve hex characters of a hash over the upstream, method, template, status class, kind, field, before and after. The same divergence has the same fingerprint however many requests carry it, and a changed diff is a new fingerprint by construction. Presentation details such as the documented note are never part of it, so annotating a finding cannot re-alert it.
+
+## From a finding to a test
+
+```bash
+pikopod scenario from-drift fp_385153d1776c
+```
+
+`from-drift` pins the contract you integrated against as a scenario pack. It passes while your sandbox still honours that baseline and fails the moment you re-import a spec that adopts the provider's change, so the break happens on your laptop. See [Generated packs](/scenarios/generated-packs).
+
+## What is not drift
+
+- **Latency.** Recorded, never a finding.
+- **Values of fields you declared volatile.** Their presence, type and nullability are still checked. See [Volatile fields](/observe/volatile-fields).
+- **Anything on a muted template.**
+- **Anything before warmup.** See [Warmup and baselines](/observe/warmup-and-baselines).
+
+Every event is written to `<data_dir>/events.ndjson` in the [drift event schema](/reference/drift-event-schema), and `pikopod incidents --only drift` lists them.

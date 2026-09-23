@@ -1,0 +1,65 @@
+---
+title: Running scenarios
+description: scenario run, its flags, and how to read the result.
+---
+
+```bash
+pikopod scenario run examplepay declines retry_storm
+```
+
+```text
+✓ declines — PASSED (4 assertion(s) passed; 0 not evaluated)
+    NOT_EVALUATED  arm-decline      armed error on POST /charges
+    PASSED         declined         POST /charges → 400
+    NOT_EVALUATED  clear            cleared matching faults
+    PASSED         recovered        POST /charges → 201
+✓ retry_storm — PASSED (4 assertion(s) passed; 0 not evaluated)
+    NOT_EVALUATED  arm              armed error on POST /charges
+    PASSED         attempt1         POST /charges → 503
+    PASSED         attempt2         POST /charges → 503
+    PASSED         attempt3         POST /charges → 201
+```
+
+Names resolve to archetypes first, then to saved packs. Several can run in one command.
+
+## Reading the result
+
+| Mark | Status | Meaning |
+|---|---|---|
+| `✓` | `PASSED` | Every assertion passed. |
+| `✗` | `FAILED` | An assertion failed. Exit `1`. |
+| `!` | `ERRORED` | A step could not execute. Exit `2`. |
+
+Each step line shows the step's status, key and summary. `NOT_EVALUATED` marks steps with no assertions of their own, such as arming or clearing a fault. When the sandbox has a webhook sink, a sink summary follows each scenario.
+
+## Flags
+
+| Flag | Meaning |
+|---|---|
+| `--bind role=operationId` | Override a role binding. See [Binding](/scenarios/binding). |
+| `--input name=value` | Set a declared input. Numbers and booleans are coerced to the declared type. |
+| `--seed <string>` | The run seed. Default: the sandbox's seed. Same seed, same bytes. |
+| `--persist` | Run against the sandbox's real store. Seeded state then stands for the served sandbox. Armed faults never outlive the run; arm the served sandbox with `chaos` or `mode` instead. |
+| `--target <url>` | Run against a real endpoint. |
+| `--target-header 'Name:value'` | A header on every remote request. Repeatable. |
+
+## Ephemeral by default
+
+Each run drives its own requests at a throwaway copy of the sandbox, so a test never pollutes the served sandbox's state, and no `pikopod up` needs to be running. Faults, seeded state, the virtual clock, the webhook outbox and the request journal all exist inside the run.
+
+## Against a real endpoint
+
+```bash
+pikopod scenario run examplepay checkout-flow --target https://sandbox.examplepay.test --target-header 'Authorization:Bearer …'
+```
+
+Only `REQUEST`, `NOTE` and `SNAPSHOT` steps are allowed. A real endpoint has no fault arming, seeded state, virtual clock, webhook outbox or request journal to consult, so any other step type is refused before anything runs. Header values are never printed.
+
+## In CI
+
+```bash
+pikopod import examplepay --spec ./specs/examplepay.yaml --seed ci-fixed
+pikopod scenario run examplepay declines timeouts retry_storm partial_failure incident-14835fa32dfb
+```
+
+Pin `--seed` so transcripts are byte-identical between runs. See [CI integration](/gate/ci-integration#running-the-sandbox-in-ci).

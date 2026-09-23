@@ -1,0 +1,67 @@
+---
+title: Sandbox
+description: A deterministic, stateful simulator built from the provider's own spec. Same seed, same bytes, every run.
+---
+
+Their sandbox only knows how to succeed. It has never declined a charge in a way you did not ask for, never timed out halfway through, never delivered the same webhook twice. So the first time your retry path runs for real, it runs against real money.
+
+pikopod builds a sandbox from the provider's spec and makes it fail on purpose.
+
+```bash
+pikopod import examplepay --spec ./examplepay.spec.json
+pikopod up
+```
+
+Point staging at `http://127.0.0.1:4600/examplepay`. The sandbox is not in your production request path at all; it is a local binary you point tests at.
+
+## What it is
+
+The imported contract becomes a stateful simulator:
+
+- **Route matching** against every operation the spec declares, with path templates.
+- **Declared auth enforcement.** Every request needs the issued test credential, sent the way the spec's auth scheme expects. A request without it is refused exactly as the spec says.
+- **Request validation** against the declared request schema.
+- **A resource store.** A create is stored, a read returns it, an update changes it, a delete removes it, a list pages through it with `limit` and `cursor` and a `Link: rel="next"` header.
+- **A seeded synthesiser** for everything the spec declares but no request has created, so a read of an unknown id and a list of an empty collection still answer in the documented shape.
+- **A virtual clock**, so timeouts and backoffs are instant and reproducible.
+- **Faults** you arm on demand: errors, latency, hangs, slow bodies, rate limits, connection resets, malformed responses, and webhook misdelivery.
+- **Signed webhooks**, wrapped and signed the way the provider documents.
+
+Same seed, same bytes, every run. Pin `--seed` on import for byte-identical transcripts.
+
+## How a response is chosen
+
+For a successful response the sandbox answers, in order:
+
+1. The stored resource, for reads, updates and lists of things that were created.
+2. A `204` with no body when that is what the spec declares.
+3. The example the spec declares for that response, when there is one.
+4. A body synthesised from the declared response schema, seeded so it repeats.
+5. An empty object or array as a last resort.
+
+`pikopod why` shows which path a given request took. See [`pikopod why`](/reference/cli/why).
+
+## Honest about its limits
+
+It is built to rehearse shape changes and failure paths, not to be a faithful clone of the provider. Action endpoints such as `POST /charges/{id}/capture` return the declared shape but carry no provider business logic. Rate limiting is injectable but not modelled. Pagination understands `limit` and `cursor`. Provider-specific side effects that the spec does not describe do not happen.
+
+## Two ways to use it
+
+| You want | Use |
+|---|---|
+| pikopod to drive requests and assert the answers, with nothing you serve touched | [Scenarios](/scenarios/overview) |
+| Your own tests, Postman, or a teammate's browser to meet a failure on the served sandbox | [Modes](/sandbox/modes) and [Faults](/sandbox/faults) |
+
+## In this section
+
+| Page | |
+|---|---|
+| [Importing](/sandbox/importing) | Specs, seeds, credentials, updating a pin. |
+| [Importing from a docs URL](/sandbox/docs-url-import) | When there is no spec. |
+| [Running](/sandbox/running) | `pikopod up`, ports, tokens, the control plane. |
+| [Faults](/sandbox/faults) | Every kind, and what it does on the wire. |
+| [Modes](/sandbox/modes) | A scenario's standing state on the served sandbox. |
+| [Webhooks](/sandbox/webhooks) | Triggers, emit-only events, envelopes and signing. |
+| [Request journal](/sandbox/request-journal) | What your code actually sent. |
+| [Recordings tier](/sandbox/recordings-tier) | Serving recorded traffic for what the spec cannot answer. |
+| [Limits](/sandbox/limits) | Quotas and bounds. |

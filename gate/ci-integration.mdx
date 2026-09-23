@@ -1,0 +1,102 @@
+---
+title: CI integration
+description: One job that fails the build on a breaking spec change and annotates the pull request.
+---
+
+## GitHub Actions
+
+```yaml
+name: provider-contract
+on: [pull_request]
+
+jobs:
+  spec-diff:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install pikopod
+        run: |
+          VERSION=0.1.1
+          curl -fsSL "https://github.com/Pikopod/pikopod/releases/download/v${VERSION}/pikopod_${VERSION}_linux_amd64.tar.gz" | tar xz
+      - name: Gate on declared drift
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          ./pikopod spec-diff git:origin/main:openapi.yaml openapi.yaml \
+            --format githubactions --fail-on ERR --handoff report.json
+      - name: Post the report on the PR
+        if: always()
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: ./pikopod pr comment --handoff report.json
+```
+
+What each piece does:
+
+- **`fetch-depth: 0`** so `git:origin/main:openapi.yaml` can be read from object storage. No checkout of the base branch is needed.
+- **`safe.directory`** because in a CI container the checkout is often owned by another user and git refuses to read it. pikopod detects this and prints the same fix, but setting it up front avoids a red run.
+- **`--format githubactions`** turns every finding into a workflow command carrying file, line and column, so it appears inline on the diff.
+- **`--handoff report.json`** writes the JSON report alongside the annotations.
+- **`pr comment`** posts one marker-tagged comment and updates it in place on re-runs. Platform, repository, PR number and head SHA are detected from the Actions environment. The token comes from `GITHUB_TOKEN` or `GH_TOKEN`, never from a flag.
+
+If the token cannot comment (a read-only token on a fork PR), `pr comment` degrades: it writes the report to the job summary, or to stdout, and exits `0` with a note on stderr.
+
+## GitLab CI
+
+```yaml
+spec-diff:
+  image: alpine:3
+  script:
+    - apk add --no-cache curl git
+    - VERSION=0.1.1
+    - curl -fsSL "https://github.com/Pikopod/pikopod/releases/download/v${VERSION}/pikopod_${VERSION}_linux_amd64.tar.gz" | tar xz
+    - git config --global --add safe.directory "$CI_PROJECT_DIR"
+    - ./pikopod spec-diff git:origin/main:openapi.yaml openapi.yaml --fail-on ERR --handoff report.json
+  after_script:
+    - ./pikopod pr comment --handoff report.json
+```
+
+`pr comment` detects GitLab from `GITLAB_CI`, reads the project and merge request IID from the CI variables, and needs `GITLAB_TOKEN` with `api` scope. Job tokens usually cannot post merge request notes.
+
+## Container image
+
+The image is `FROM scratch` and runs as an unprivileged user:
+
+```yaml
+- name: Gate on declared drift
+  run: |
+    docker run --rm -v "$PWD:/work" -w /work \
+      ghcr.io/pikopod/pikopod:0.1.1 spec-diff old.yaml new.yaml --fail-on ERR
+```
+
+There is no git inside the image, so use file sources or check the base version out to a path first.
+
+## Exit codes in CI
+
+Treat `1` and `2` differently. `1` means the provider changed something that breaks you. `2` means the tool could not run: a document did not parse, a `$ref` was refused, the checkout was unreadable. A gate that collapses them teaches people to ignore both. See [Exit codes](/operations/exit-codes).
+
+## Gating on recorded traffic too
+
+Once an agent has been observing a provider, add the offline replay gate to the same job. It needs the `data_dir` (or a copy of it) and no network:
+
+```bash
+./pikopod replay --ci --handoff replay.json
+```
+
+See [Replay gate](/observe/replay-gate).
+
+## Running the sandbox in CI
+
+Scenario runs need no server: `pikopod scenario run` builds its own engine in-process.
+
+```bash
+./pikopod import examplepay --spec ./specs/examplepay.yaml --seed ci-fixed
+./pikopod scenario run examplepay declines timeouts retry_storm partial_failure
+./pikopod scenario run examplepay incident-14835fa32dfb
+```
+
+Pin `--seed` so transcripts are byte-identical between runs. Packs are looked up in `./scenarios` first, then in `<data_dir>/scenarios`, so a committed `scenarios/` directory is the regression suite.

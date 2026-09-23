@@ -1,0 +1,124 @@
+---
+title: Control plane
+description: The HTTP endpoints pikopod up serves besides your traffic.
+---
+
+`pikopod up` serves two listeners. Each carries a small control surface next to the traffic it handles. When a token is configured, every request to either listener must carry it in `X-Pikopod-Token`. On loopback with no token, the sandbox control plane is open, because it controls a fake and never a provider.
+
+All control responses are JSON with `content-type: application/json; charset=utf-8`.
+
+## Sandbox listener (`:4600`)
+
+Traffic to a sandbox goes to `/<name>/...`. The control plane lives under `/_pikopod/sandboxes/<name>/`.
+
+### Faults
+
+| Method | Path | Body | Response |
+|---|---|---|---|
+| `GET` | `/_pikopod/sandboxes/<name>/faults` | | `{"faults": [...]}` |
+| `POST` | `/_pikopod/sandboxes/<name>/faults` | A fault rule (below) | `201 {"armed": <rule>}` |
+| `DELETE` | `/_pikopod/sandboxes/<name>/faults?method=&path=` | | `{"cleared": n}` |
+
+A fault rule:
+
+```json
+{
+  "kind": "error",
+  "method": "POST",
+  "path": "/charges",
+  "status": 503,
+  "probability": 1,
+  "delayMs": 0,
+  "event": "",
+  "wallclock": false,
+  "times": 0,
+  "per": ""
+}
+```
+
+`kind` is one of `error`, `latency`, `hang`, `slow_body`, `rate_limit`, `connection_reset`, `malformed_response`, `wrong_content_length`, `duplicate_webhook`, `drop_webhook`, `reorder_webhook`, `delay_webhook`. Non-webhook kinds need `method` and `path` (the path template as in the spec). `rate_limit` is armed as an `error` with status `429`; `error` with no status becomes `500`. `probability` defaults to `1`. Without `method` and `path` the server answers `400 {"message":"method and path are required"}`. See [Faults](/sandbox/faults).
+
+### Requests journal
+
+| Method | Path | Response |
+|---|---|---|
+| `GET` | `/_pikopod/sandboxes/<name>/requests?limit=50` | `{"requests": [...], "evicted": n}`, newest last |
+| `DELETE` | `/_pikopod/sandboxes/<name>/requests` | `{"reset": true}` |
+
+Each entry carries the sequence number, method, path, matched template, status, and redacted headers, query and body. `evicted` counts older entries the bounded journal dropped. See [Request journal](/sandbox/request-journal).
+
+### Mode
+
+| Method | Path | Body | Response |
+|---|---|---|---|
+| `GET` | `/_pikopod/sandboxes/<name>/mode` | | `{"mode": <spec or null>}` |
+| `POST` | `/_pikopod/sandboxes/<name>/mode` | `{"name": "<archetype or pack>", "seed": "", "bind": {"role": "operationId"}}` | `201 {"mode": <spec>}` |
+| `DELETE` | `/_pikopod/sandboxes/<name>/mode` | | `{"cleared": n}` |
+
+`DELETE` clears every fault on the sandbox and removes the stored mode. A scenario that has no standing state is refused with `400` and the reason. See [Modes](/sandbox/modes).
+
+### Webhooks
+
+| Method | Path | Body | Response |
+|---|---|---|---|
+| `GET` | `/_pikopod/sandboxes/<name>/webhooks` | | `{"deliveries": [...], "sink": {"delivered", "failed", "dropped", "lastError"}}` |
+| `POST` | `/_pikopod/sandboxes/<name>/webhooks/emit` | `{"event": "<declared event>", "data": {...}}` | `201 {"emitted": "<event>"}` |
+
+Only events the spec declares can be emitted. See [Webhooks](/sandbox/webhooks).
+
+### Errors
+
+| Status | Body |
+|---|---|
+| `404` | `{"message":"unknown sandbox <name>"}` or `{"message":"Not Found"}` |
+| `405` | `{"message":"Method Not Allowed"}` |
+| `400` | `{"message":"<what went wrong>"}` |
+
+Request bodies are read up to 1 MiB.
+
+## Agent listener (`:4700`)
+
+Traffic to an upstream goes to its `listen` route, `/<upstream>/...` by default. Anything that matches no upstream answers `404`.
+
+### Health
+
+`GET /healthz` is public for liveness. Without a token, or with a token and the header, it returns the full payload:
+
+```json
+{
+  "status": "ok",
+  "uptime_seconds": 120,
+  "requests_proxied": 18,
+  "upstream_errors": 0,
+  "upstream_body_errors": 0,
+  "recordings_written": 18,
+  "recordings_dropped": 0,
+  "recordings_sampled_out": 0,
+  "observer_panics": 0,
+  "events_emitted": 0,
+  "alerts_sent": 0,
+  "last_delivery_ok": false,
+  "last_delivery_err": "",
+  "deliveries_dropped": 0,
+  "saturation_evictions": 0,
+  "tracked_fingerprints": 0,
+  "baselines": [
+    {"endpoint": "examplepay GET /charges", "status_class": "2xx", "samples": 12, "warmed_up": true}
+  ]
+}
+```
+
+With a token set and no header it answers `200 {"status":"ok"}` only, so a load balancer can poll it without being handed your upstream inventory. `spec_watch` appears when a watcher is armed.
+
+### Acknowledge and accept
+
+| Method | Path | Response |
+|---|---|---|
+| `POST` | `/ack?fp=<fingerprint>` | `{"acked":"<fp>"}` |
+| `POST` | `/accept?fp=<fingerprint>` | `{"accepted":"<fp>","refrozen_families":n}` |
+
+`ack` silences a fingerprint until its diff changes. `accept` refreezes the endpoint's baseline from live traffic and acknowledges, so the drifted behaviour becomes the new normal. Unknown fingerprints answer `404`. See [Alerts](/observe/alerts).
+
+## Headers the agent handles
+
+`X-Pikopod-Token` is stripped before anything is forwarded, in every configuration. When an upstream cannot be reached, the agent answers `502` with `X-Pikopod-Error: upstream-unreachable` and never retries. See [Headers](/reference/headers).

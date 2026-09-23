@@ -1,0 +1,40 @@
+---
+title: pikopod fix
+description: Turn a drift event into a code change in your repository.
+---
+
+```text
+pikopod fix <fingerprint | bundle.json> [flags]
+```
+
+Deterministic impact scan, then a bounded patch from your own model, verified by `--check` and reverted in full if the check fails, optionally opened as a pull request. Needs a model key for the patch step; the scan runs without one.
+
+| Flag | Meaning |
+|---|---|
+| `--dir <path>` | Repository to scan and fix. Default: the current directory. |
+| `--check <command>` | Command that must pass after the fix, run through `sh -c` in the repository. Failure reverts every edit. |
+| `--dry-run` | Print the proposed edits without writing anything. |
+| `--pr` | Branch, commit, push, and open a PR carrying the fix. |
+| `--branch <name>` | Default `pikopod/fix-<fingerprint>`. |
+| `--base <name>` | Default: origin's HEAD, else `main`. |
+| `--title <text>` | PR title. |
+| `--platform`, `--repo`, `--number`, `--sha`, `--api` | Forge coordinates, detected from CI by default. |
+
+```text
+drift fp_385153d1776c: GET /transaction/tx_{id} — enum_value_new status
+impact: 2 file(s) reference status
+  internal/payments/verify.go
+  internal/payments/verify_test.go
+applied 1 edit(s) to internal/payments/verify.go
+check: go build ./...
+check passed
+fix is in your working tree: internal/payments/verify.go
+review it, then carry it: pikopod fix fp_385153d1776c --pr   (or commit it yourself)
+```
+
+| Exit | When |
+|---|---|
+| `0` | A fix was applied and passed the check, or the model found no safe change. |
+| `2` | The impact scan found nothing (`UNVERIFIABLE`), no key is configured, the check failed and the edits were reverted, or a forge step failed. |
+
+See [Fix](/reproduce/fix) for what it sends to the model and its known limitation.

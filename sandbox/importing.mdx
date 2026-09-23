@@ -1,0 +1,74 @@
+---
+title: Importing
+description: A spec becomes a sandbox. Formats, seeds, credentials, and refreshing the pin.
+---
+
+```bash
+pikopod import examplepay --spec ./openapi.json
+```
+
+```text
+sandbox examplepay registered (sbx_41d959476a09e5f9, 4 endpoints)
+serve it with `pikopod up` → http://127.0.0.1:4600/examplepay/...
+test credential (send it the way the spec's auth scheme expects, e.g. the Authorization header):
+  pikopod_sbx_test_8eb1bc48ceb2fcd6ab7ba33c12f314189b3e51502ea32156
+```
+
+The name becomes the route: `/examplepay/` on the sandbox listener. It may not contain slashes or whitespace.
+
+## Formats
+
+`--spec` takes a local path or an `http(s)` URL to:
+
+| Format | Notes |
+|---|---|
+| OpenAPI 3.0 and 3.1 | JSON or YAML. Same-repository relative `$ref`s resolve for local files. |
+| Swagger 2.0 | |
+| Postman collection v2 | Collection-level auth, documented examples and `:param` segments are understood. |
+| GraphQL schema | Up to 5 MiB. |
+| A documentation page | See [Importing from a docs URL](/sandbox/docs-url-import). |
+
+Documents up to 32 MiB are accepted. Remote and absolute `$ref`s are refused; see [Multi-file specs](/gate/multi-file-specs).
+
+## Provenance
+
+Every field in the imported contract carries where it came from: `EXPLICIT` (stated in the source) or `DERIVED` (a deterministic transformation of it). A contract a model wrote from documentation carries `LLM_EXTRACTED` and imports as `DRAFT`. The levels never merge, so extracted behaviour is never presented as documented behaviour.
+
+## Seeds and credentials
+
+The seed drives every synthesised value, every webhook delivery id, and the issued test credential. It is random by default. Pin one for reproducible transcripts:
+
+```bash
+pikopod import examplepay --spec ./openapi.json --seed ci-fixed
+```
+
+The credential is printed at import and by `pikopod sandbox list`. Send it the way the spec's auth scheme expects: a bearer token in `Authorization`, an API key header, or basic auth. A request without it is refused as the spec declares.
+
+## Linking to an upstream
+
+When an agent upstream of the same name exists in `pikopod.yaml`, the sandbox is linked automatically. `--upstream <name>` links explicitly. A linked upstream's traffic can refine the contract and feed the recordings tier. See [Contract](/observe/contract) and [Recordings tier](/sandbox/recordings-tier).
+
+## Webhooks at import
+
+`--webhook-url` sets the sink deliveries POST to. `--webhooks <file>` attaches an envelope and event bindings. See [Webhooks](/sandbox/webhooks).
+
+## Keeping the spec you imported
+
+```bash
+pikopod import examplepay --spec https://api.examplepay.com/openapi.json --emit-spec specs/examplepay.json
+```
+
+Writes the document the import used, fetched or extracted, so it can be reviewed and committed. Import from the file from then on.
+
+## Updating
+
+```bash
+pikopod import examplepay --update
+pikopod import examplepay --update --spec ./openapi.v2.json
+```
+
+Re-imports from the recorded source, or a new one, and prints the declared changes it accepts, using the same checks as `spec-diff`. The webhook envelope and every event binding the new spec still declares are kept, and the spec watcher's pin is reset. Restart `pikopod up` to serve the updated contract.
+
+## Where it lives
+
+The registry is `<data_dir>/sandboxes.json`, and the normalized contract is `<data_dir>/apis/<name>.ir.json`. See [Data directory](/operations/data-directory).

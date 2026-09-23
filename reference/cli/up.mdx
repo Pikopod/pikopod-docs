@@ -1,0 +1,40 @@
+---
+title: pikopod up
+description: Serve the observing agent and every registered sandbox in one process.
+---
+
+```text
+pikopod up [flags]
+```
+
+Starts two listeners: the agent on `listen:agent_port` (default `127.0.0.1:4700`) and the sandbox on `listen:sandbox_port` (default `127.0.0.1:4600`). Both share `data_dir` and fail independently. The spec watcher runs inside `up` for every upstream with a `spec_source`. Runs until `SIGINT` or `SIGTERM`, then drains for three seconds.
+
+| Flag | Meaning |
+|---|---|
+| `--wallclock-faults` | Every armed fault delays or hangs on the real wire. By default delays are virtualized and instant, which is what `scenario run` measures against. |
+
+## Output
+
+```text
+spec-declared enums: 1 field(s) across 1 upstream(s) keep their declared values readable on disk
+spec watch ON: 1 declared source(s), re-checked every 1h0m0s
+pikopod agent on http://127.0.0.1:4700  (upstreams: examplepay)
+point your app's provider base URL at http://127.0.0.1:4700/<upstream>; /healthz shows progress
+pikopod sandbox on http://127.0.0.1:4600  (sandboxes: examplepay)
+```
+
+Before serving, `up` lints every `volatile_fields` entry against what has been learned and prints any dead, stable or over-broad entry. See [Volatile fields](/observe/volatile-fields#collateral).
+
+## Refuses to start when
+
+- `upstreams` is empty.
+- `listen` is not loopback and no token is configured.
+- A sandbox has a webhook sink and its spec declares a signature, but the environment variable the envelope names is unset.
+- A `volatile_fields` entry is malformed.
+- The salt, the token file, or a config file holding a model key is readable by other users.
+
+Every refusal names the fix. See [Troubleshooting](/operations/troubleshooting).
+
+## Related
+
+- [Observe](/observe/overview), [Running the sandbox](/sandbox/running), [Deployment](/operations/deployment), [Configuration](/operations/configuration).

@@ -1,0 +1,61 @@
+---
+title: pikopod import
+description: Import an API spec, or a documentation page, into a deterministic sandbox.
+---
+
+```text
+pikopod import <provider> [flags]
+```
+
+Registers a sandbox named `<provider>`, served at `/<provider>/` by `pikopod up`. `sandbox add` is the same command without `--update`.
+
+| Flag | Meaning |
+|---|---|
+| `--spec <file-or-url>` | The spec source: OpenAPI 3.x, Swagger 2.0, a Postman collection, a GraphQL schema, or a documentation page. Required unless `--update` and the sandbox recorded its source. |
+| `--seed <string>` | Run seed. Default random. Pin one for reproducible transcripts. |
+| `--webhook-url <url>` | An `http(s)` sink. Webhook deliveries POST here, signed. |
+| `--webhooks <file>` | A YAML or JSON sidecar describing how the provider wraps and signs deliveries, and which calls fire which events. See [Webhooks](/sandbox/webhooks). |
+| `--emit-spec <path>` | Write the spec the import used, fetched or extracted, to this path so it can be reviewed, corrected and committed. |
+| `--upstream <name>` | Link to an agent upstream so its traffic refines this contract. Automatic when the names match. |
+| `--recordings-fallback` | Serve the linked upstream's recordings for requests neither the spec nor admitted traffic can answer. See [Recordings tier](/sandbox/recordings-tier). |
+| `--update` | Re-import an existing sandbox's spec and refresh the declared-drift pin. Accepts the standing spec-diff findings. |
+
+## Output
+
+```text
+sandbox examplepay registered (sbx_41d959476a09e5f9, 4 endpoints)
+serve it with `pikopod up` → http://127.0.0.1:4600/examplepay/...
+test credential (send it the way the spec's auth scheme expects, e.g. the Authorization header):
+  pikopod_sbx_test_8eb1bc48ceb2fcd6ab7ba33c12f314189b3e51502ea32156
+```
+
+With webhooks declared and a sink configured, the count of declared events and the signing secret follow. A declared event with no trigger and no `x-pikopod-emit-only` mark is flagged, because it would never fire.
+
+When `--spec` points at a documentation page, the first line names how the spec was found:
+
+```text
+documentation page → spec via well-known-spec (https://docs.examplepay.test/openapi.json)
+```
+
+A model-extracted spec imports as `DRAFT` and says so. See [Importing from a docs URL](/sandbox/docs-url-import).
+
+## `--update`
+
+```text
+accepting 1 declared change(s):
+1 change(s): 1 ERR, 0 WARN, 0 INFO
+
+ERR  GET    /charges/{id}                            endpoint-removed
+     endpoint removed from the spec  [fp_bcc85ba9a094]
+pin refreshed for examplepay (3 endpoints) — restart `pikopod up` to serve the updated contract
+```
+
+Keeps the webhook envelope and every event binding the new spec still declares.
+
+## Exit codes
+
+`0` on success, `2` on any refusal: no spec, an unreachable URL, a document that does not parse, a name that already exists, an invalid webhook URL.
+
+## Related
+
+- [Importing](/sandbox/importing), [Sandbox](/reference/cli/sandbox).

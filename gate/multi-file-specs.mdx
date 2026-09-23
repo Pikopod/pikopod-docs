@@ -1,0 +1,42 @@
+---
+title: Multi-file specs
+description: Which $refs pikopod resolves, wherever it reads a spec.
+---
+
+A spec split across files works when the source is a local file or a `git:<ref>:<path>` reference. The policy is the same wherever pikopod reads a spec: `import`, `spec-diff` and the `spec_source` watcher.
+
+## The policy
+
+| `$ref` | Resolved? | Why |
+|---|---|---|
+| `#/components/…` (local) | Always | The document is already in hand. |
+| `./schemas/x.yaml#/X`, `../common.yaml` (relative, same repository) | When the source is a local file or `git:<ref>:<path>` | Read from the same directory tree, or from git object storage at the **same ref**, never the working tree. |
+| `/etc/…`, `../../…` escaping the root | Never | The reference must stay inside the document's own tree. |
+| `https://…`, `//host/…`, `file://…` | Never | pikopod runs in CI on pull requests from forks. A fetched `$ref` is a server-side request forgery waiting to happen. Vendor the document instead. |
+| Any relative `$ref` when the source is a URL | Never | There is no tree to resolve it in. |
+
+## Bounds
+
+Resolution is bounded: at most 64 files and 32 MiB across them. Cycles across files are refused.
+
+## Refusals
+
+A refused `$ref` is a typed error naming the pointer, with the code `SPEC_REF_UNRESOLVABLE`, and exit `2`. It is a tool outcome, never reported as drift.
+
+```text
+error: SPEC_REF_UNRESOLVABLE: $ref "https://example.test/common.yaml#/Charge" at #/paths/~1charges/post/requestBody … → vendor the referenced document into the repository and reference it by a relative path → https://github.com/pikopod/pikopod/blob/main/docs/config-reference.md#ref-policy
+```
+
+## Git refs in CI containers
+
+Where the checkout is owned by another user, git refuses to read it and pikopod says so:
+
+```text
+error: git refuses to read this checkout: the working tree is owned by another user, which git treats as unsafe by default (common in CI containers) → run `git config --global --add safe.directory "$GITHUB_WORKSPACE"` (or the checkout path) before pikopod
+```
+
+Add that line before the gate step. See [CI integration](/gate/ci-integration).
+
+## Positions across files
+
+A finding that lands in a referenced file carries that file's path and line in `--format githubactions`, so the annotation appears on the file that actually changed. Where a change has no exact position, the nearest enclosing node is used, never the document root.

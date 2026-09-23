@@ -1,0 +1,38 @@
+---
+title: Scenarios
+description: Failure stories run against the sandbox. Eleven bind themselves to your API; the rest you generate or write.
+---
+
+A scenario is a failure story run against a sandbox: send these requests, arm these faults, assert these things about the responses, and tell me whether my integration survives.
+
+```bash
+pikopod scenario list examplepay                     # which archetypes bind to YOUR api
+pikopod scenario run examplepay declines timeouts    # run them
+pikopod scenario reproduce fp_14835fa32dfb           # a production failure becomes a test
+pikopod scenario from-drift fp_385153d1776c          # a shape change becomes a test
+pikopod scenario from-recordings examplepay          # recorded traffic becomes a pack
+pikopod scenario create examplepay "timeout after the charge succeeds"   # plain English, with your key
+```
+
+## Where scenarios come from
+
+| Source | What you get | Needs |
+|---|---|---|
+| [Archetypes](/scenarios/archetypes) | Eleven provider-agnostic stories bound to the operations your spec declares. Nothing to author. | A spec |
+| [`reproduce`](/reproduce/reproduce) | A pack that recreates a recorded production failure. | An incident |
+| [`from-drift`](/scenarios/generated-packs) | A pack that pins the contract you integrated against. | A drift event |
+| [`from-recordings`](/scenarios/generated-packs) | A pack that replays a window of recorded traffic in order. | Recordings |
+| [`create`](/scenarios/plain-english) | A pack drafted from a sentence, grounded against your API. | A model key |
+| [By hand](/scenarios/pack-format) | Anything the grammar allows. | |
+
+## Runs are ephemeral
+
+`scenario run` builds its own engine in-process against a throwaway copy of the sandbox. Nothing you serve with `pikopod up` is touched, and no server needs to be running. When you want your own application to meet a failure on the served sandbox, use a [mode](/sandbox/modes) instead.
+
+## Exit codes
+
+`0` when every scenario passes, `1` when an assertion fails, `2` when a step could not execute or the run could not be set up. A failing scenario and a broken tool are never conflated.
+
+## Where packs live
+
+`scenario run` looks for packs in `./scenarios` (relative to where you run it) and in `<data_dir>/scenarios`. Generated packs are written to `<data_dir>/scenarios`. Copy one into `./scenarios` to check it in. Packs are ordinary YAML, and a committed `scenarios/` directory is the regression suite for every provider change you have survived.

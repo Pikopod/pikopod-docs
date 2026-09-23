@@ -1,0 +1,63 @@
+---
+title: pikopod scenario
+description: List, run, create, and derive scenarios.
+---
+
+Names resolve to archetypes first, then to saved packs. Packs are looked up in `./scenarios` and then `<data_dir>/scenarios`, by their `name` field or by a path ending in `.yaml` or `.yml`.
+
+## scenario list
+
+```text
+pikopod scenario list <sandbox> [-v]
+```
+
+Which archetypes bind to this sandbox's API, with the reason for each that does not, plus saved packs. `-v` shows which operations each archetype bound to. Works offline. See [Archetypes](/scenarios/archetypes).
+
+## scenario run
+
+```text
+pikopod scenario run <sandbox> <scenarios...> [flags]
+```
+
+| Flag | Meaning |
+|---|---|
+| `--bind role=operationId` | Override a role binding. Repeatable. |
+| `--input name=value` | A scenario input. Repeatable. |
+| `--seed <string>` | Run seed. Default: the sandbox's seed. |
+| `--persist` | Run against the sandbox's real store instead of an ephemeral copy. Seeded state stands for the served sandbox; armed faults do not outlive the run. |
+| `--target <url>` | Run against a real endpoint instead of the sandbox. `REQUEST`, `NOTE` and `SNAPSHOT` steps only. |
+| `--target-header 'Name:value'` | A header sent on every remote request. Repeatable. Values are never printed. |
+
+Exit `0` when every scenario passes, `1` when any assertion fails, `2` when a step could not execute or the run could not be set up. No running server is needed; the run builds its own engine. See [Running scenarios](/scenarios/running).
+
+## scenario create
+
+```text
+pikopod scenario create <sandbox> <description...> [--yes] [--model <name>]
+```
+
+Compile a plain-English description into a pack, grounded against the operations your API actually has. Needs a model key. Prints the draft and asks before saving; `--yes` saves without asking. See [Plain English](/scenarios/plain-english).
+
+## scenario from-drift
+
+```text
+pikopod scenario from-drift <fingerprint> [--sandbox <name>]
+```
+
+Pin a drift's baseline contract as a scenario and replay it immediately. Exit `1` when the replay fails, which confirms the sandbox already reproduces the drifted behaviour. See [Generated packs](/scenarios/generated-packs).
+
+## scenario from-recordings
+
+```text
+pikopod scenario from-recordings <upstream> [--last 20] [--name <slug>]
+```
+
+Generate a pack from a window of recorded traffic: requests in recorded order, status assertions, and producer-to-consumer value chains for identifier-shaped values. Default name `traffic-<upstream>`.
+
+## scenario reproduce
+
+```text
+pikopod scenario reproduce <fingerprint | bundle.json> [--sandbox <name>]
+```
+
+Turn a recorded incident into a pack that arms the same failure and replays the recorded request, then run it. Exit `0` when the failure recurs, `2` when it does not or the recording is gone. See [Reproduce](/reproduce/reproduce).

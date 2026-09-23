@@ -1,0 +1,50 @@
+---
+title: Data directory
+description: Everything pikopod persists lives under data_dir. Nothing is uploaded.
+---
+
+`data_dir` defaults to `./pikopod-data` and is set with the `data_dir` key or `PIKOPOD_DATA_DIR`. Recordings are redacted before they are written, so what is here is what you would be comfortable sharing, with one exception: the salt.
+
+## Layout
+
+| Path | What | Written by |
+|---|---|---|
+| `.salt` | Per-install tokenization salt, mode `0600`. Treat as a secret. | First run, `doctor` |
+| `sandboxes.json` | The sandbox registry: id, seed, spec source, origin, linked upstream, webhook URL. | `import`, `sandbox add` |
+| `sandbox.db` | The sandbox resource store (SQLite, pure Go). | `up`, `scenario run --persist` |
+| `apis/<name>.ir.json` | The normalized contract a sandbox serves. | `import`, `sandbox webhooks` |
+| `apis/<upstream>.observed.json` | The traffic overlay, when `refine.enabled` is on. | `up` |
+| `apis/<upstream>.behaviour.json` | The observed state machine, when `behaviour.enabled` is on. | `up` |
+| `recordings/<upstream>.ndjson` | Sanitized exchanges, one JSON object per line, with one rotated generation `.ndjson.1`. | `up` |
+| `baselines/<upstream>.json` | Learned and frozen per-endpoint baselines. | `up` |
+| `events.ndjson` | The drift and incident event log. | `up` |
+| `alerts/state.json` | Dedupe and acknowledgement state. | `up`, `ack` |
+| `specwatch/` | The spec watcher's pin, state and journal per upstream. | `up` |
+| `scenarios/<name>.yaml` | Generated scenario packs. | `scenario create`, `from-drift`, `from-recordings`, `reproduce` |
+
+Scenario packs are also read from `./scenarios` in the working directory, which is where committed packs live.
+
+## Back it up like state
+
+Baselines represent days of learning, and losing them restarts every warmup window. The event log and recordings are what every open incident reproduces from. Put `data_dir` on a persistent volume and give it to exactly one agent. See [Deployment](/operations/deployment).
+
+## The salt
+
+Tokenization is an HMAC keyed by `.salt`. It is what makes tokens correlatable within your install and meaningless outside it. pikopod refuses to start if the file is group- or world-readable. Deleting it regenerates it, and old tokens stop correlating with new ones, so baselines are effectively reset. Include it in backups and exclude it from anything you share. See [Security](/operations/security#the-salt).
+
+## Retention and rotation
+
+Recordings and the event log rotate by size, keeping one previous generation. With `retention.max_age_hours` set, a record is kept at least that long and deleted no later than roughly twice that age. Dedupe and acknowledgement state is never aged, so an acknowledged fingerprint stays quiet across restarts.
+
+## Resetting things
+
+| To | Run |
+|---|---|
+| Clear a sandbox's stored resources | `pikopod sandbox reset <name>` |
+| Clear a running sandbox's request journal | `pikopod sandbox requests <name> --reset` |
+| Re-learn an upstream's baselines from scratch | `pikopod baseline reset <upstream>` |
+| Start over completely | Stop `pikopod up` and delete the directory. |
+
+## Inspecting what is stored
+
+`pikopod inspect` prints stored records with tokenized fields visible, so you can confirm what was kept before you trust it. See [Inspecting](/observe/inspecting).

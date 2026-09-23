@@ -1,0 +1,18 @@
+---
+title: pikopod mcp
+description: Serve pikopod's checks and sandbox controls to a coding agent over the Model Context Protocol.
+---
+
+```text
+pikopod mcp [--config <path>]
+```
+
+Serves pikopod over MCP on stdin and stdout. Reads the same `pikopod.yaml`, starts no listener and no daemon, and exits `2` when the configuration is missing or invalid. Runs until stdin closes.
+
+```json
+{ "mcpServers": { "pikopod": { "command": "pikopod", "args": ["mcp", "--config", "/path/to/pikopod.yaml"] } } }
+```
+
+The tools are the checks an agent cannot perform by reading files: what a provider actually sent, what the caller's code actually sent, and whether a change breaks either. Every result carries a verdict from a closed set (`CLEAN`, `FINDINGS`, `UNVERIFIABLE`, `ERROR`), and `UNVERIFIABLE` always says why. `fix` is deliberately absent.
+
+See [Coding agents](/getting-started/coding-agents) and the [MCP tools reference](/reference/mcp-tools).

@@ -1,0 +1,268 @@
+---
+title: Configuration
+description: Every key in pikopod.yaml, every default, every environment override.
+---
+
+pikopod reads `pikopod.yaml` from the working directory unless `--config` says otherwise. `--config` is accepted by every command. Run `pikopod init` to scaffold one.
+
+**Unknown keys are startup errors, not silent no-ops.** A typo'd or removed knob must never let you believe something is configured. If pikopod starts, every key you wrote is a key it understands.
+
+## A minimal working file
+
+```yaml
+data_dir: ./pikopod-data
+upstreams:
+  examplepay:
+    listen: /examplepay
+    target: https://api.examplepay.com
+    spec_source: https://api.examplepay.com/openapi.json
+slack:
+  webhook_url: https://hooks.slack.com/services/...
+```
+
+Environment variables override the file. The full set is in [Environment variables](/reference/environment-variables).
+
+## Top-level keys
+
+| Key | Type | Default | Notes |
+|---|---|---|---|
+| `listen` | string | `127.0.0.1` | Bind address for both servers. Non-loopback requires a token. |
+| `agent_port` | int | `4700` | The observing agent. |
+| `sandbox_port` | int | `4600` | The sandbox. |
+| `data_dir` | string | `pikopod-data` | Everything pikopod persists. |
+| `token_file` | string | | Listener token for non-loopback binds. Must not be group- or world-readable. |
+| `tls` | object | | `cert_file` and `key_file`. Both or neither. |
+| `upstreams` | map | | The one concept the whole tool turns on. See below. |
+| `slack` | object | | Alert delivery. |
+| `llm` | object | | Bring-your-own model key. |
+| `warmup` | object | 50 samples, 48 hours | Per-endpoint learning gates. |
+| `refine` | object | off | Contract refinement from traffic. |
+| `behaviour` | object | off | Observed state machine. |
+| `sampling` | object | keep everything | Thin what recordings persist. |
+| `retention` | object | size-only rotation | Age recordings and the event log out. |
+| `spec_watch` | object | 60 minutes | Re-check interval for declared drift. |
+
+## upstreams
+
+Each named upstream has a route on the agent and a target it forwards to. The target alone decides posture: a real provider means watch mode, a vendor sandbox means staging mode, the internal sandbox means scenario mode.
+
+```yaml
+upstreams:
+  examplepay:
+    listen: /examplepay
+    target: https://api.examplepay.com
+    spec_source: https://api.examplepay.com/openapi.json
+    volatile_fields: [request_id, timestamp]
+    mute: ["/health"]
+    incidents:
+      client_errors: false
+      client_error_rate: 0.05
+```
+
+| Key | Default | Meaning |
+|---|---|---|
+| `listen` | `/<name>` | Route prefix on the agent. Must start with `/`, must not be `/` alone, and must not duplicate or nest inside another upstream's route. |
+| `target` | required | Absolute base URL this upstream forwards to, with scheme and host. |
+| `volatile_fields` | | Fields whose **values** are allowed to churn. See [Volatile fields](/observe/volatile-fields). |
+| `mute` | | Endpoint templates whose alerts are suppressed. |
+| `spec_source` | | Arms the declared-drift watcher: an `http(s)` URL, a local file, or `git:<ref>:<path>`. See [Spec watch](/observe/spec-watch). |
+| `incidents.client_errors` | `false` | Capture 4xx as incidents. |
+| `incidents.client_error_rate` | `0.05` | Share of requests to one endpoint family that must be 4xx before one is reported. Below 20 requests no rate is claimed. |
+
+Upstream names may only contain letters, digits, `_` and `-`, because the name becomes a file path component under `data_dir`.
+
+## listen and tokens
+
+```yaml
+listen: 127.0.0.1
+token_file: /etc/pikopod/token
+```
+
+Both servers bind loopback by default. **Binding a non-loopback address requires a token.** The agent sits in a production request path, and an unauthenticated listener on `0.0.0.0` is a way to lose data, so pikopod refuses to start rather than let it happen. Supply the token via `PIKOPOD_TOKEN` or `token_file`, never on the command line. The environment wins over the file.
+
+When a token is set, every request to either server must carry it in the `X-Pikopod-Token` header. Tokenless agent listeners additionally reject requests carrying a foreign `Host` header, which blocks DNS rebinding from a browser on the same machine.
+
+## tls
+
+```yaml
+tls:
+  cert_file: /etc/pikopod/cert.pem
+  key_file: /etc/pikopod/key.pem
+```
+
+Serves both ports over HTTPS. Both files or neither. Self-signed certificates are fine; pikopod's own CLI clients trust the configured certificate file directly and nothing else. To generate a pair:
+
+```bash
+openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 \
+  -keyout key.pem -out cert.pem -days 365 -nodes -subj /CN=pikopod
+```
+
+## data_dir
+
+```yaml
+data_dir: ./pikopod-data
+```
+
+Recordings, baselines, alert state, imported contracts, scenario packs, the event log and the sandbox store all live here. Back it up like state, not like a cache. Its layout is in [Data directory](/operations/data-directory).
+
+## sampling
+
+```yaml
+sampling:
+  rate: 0.25
+```
+
+`rate` thins what recordings **persist**, never what pikopod **learns** from. Every record still feeds the learner and the differ; the rate only gates the disk write. Error responses, drift-bearing records and pre-warmup traffic are always kept. `0` keeps guaranteed classes only, and is distinguishable from unset (`1.0`).
+
+## retention
+
+```yaml
+retention:
+  max_age_hours: 168
+```
+
+Ages recordings and the event log out of disk. A record is kept at least that long and deleted no later than roughly twice that age. `0` (default) keeps size-based rotation only.
+
+`scenario from-drift` and `scenario reproduce` read the event log, so fingerprints older than the window can no longer be pinned. Every incident row therefore carries `reproducible until <time>` and an `export:` hint. See [Incident bundles](/reproduce/incident-bundles).
+
+## slack
+
+```yaml
+slack:
+  webhook_url: https://hooks.slack.com/services/...
+  min_level: WARN
+  digest_hours: 24
+```
+
+| Key | Meaning |
+|---|---|
+| `webhook_url` | A plain incoming webhook. |
+| `min_level` | Delivery floor: `INFO` (default, deliver everything), `WARN`, or `ERR`. It floors the channel, not the record: muted alerts still appear in the local event log, in `pikopod status`, and in the digest. |
+| `digest_hours` | Periodic digest of new findings by severity. `0` disables it. |
+
+Alert behaviour itself is a fixed contract, not a set of keys. See [Alerts](/observe/alerts).
+
+## warmup
+
+```yaml
+warmup:
+  min_samples: 50
+  min_hours: 48
+```
+
+pikopod watches an endpoint until it has seen `min_samples` responses across at least `min_hours`, then freezes a reference. Both are overridable for evaluation. Lowering them shortens the blind window and raises false positives. `min_hours: 0` is explicitly distinguishable from unset. See [Warmup and baselines](/observe/warmup-and-baselines).
+
+## spec_watch
+
+```yaml
+spec_watch:
+  interval_minutes: 60
+```
+
+Armed per upstream by `spec_source`. Fetches are ETag-gated and the pin never advances on its own; accepting a declared change is an explicit `pikopod import <name> --update`.
+
+## refine
+
+```yaml
+refine:
+  enabled: false
+  prefer_spec: false
+```
+
+Off by default. When enabled, observed traffic accumulates an overlay beside the spec-derived contract, and matured observations join the effective contract. `prefer_spec` flips type-conflict precedence back to spec-wins; the default is traffic-wins once the sustain gates clear. Inspect the result with `pikopod contract <sandbox>`. See [Contract](/observe/contract).
+
+## behaviour
+
+```yaml
+behaviour:
+  enabled: false
+```
+
+Off by default. When enabled, the agent learns the provider's observed state machine from traffic. See [State machine](/observe/state-machine).
+
+## llm
+
+```yaml
+llm:
+  provider: openai     # which model provider the key belongs to
+  api_key: sk-...      # or set PIKOPOD_LLM_KEY in the environment
+  model: gpt-4o-mini   # optional; each provider has a default
+```
+
+Bring your own key. pikopod never ships a key and never proxies your requests through anyone else. Set `provider` to the provider the key belongs to (`openai` or `openrouter`), and the key in `api_key` or in `PIKOPOD_LLM_KEY`. The provider's own standard key variable is also honoured, so an existing environment keeps working.
+
+When a key is stored **in** `pikopod.yaml`, the file must be mode `0600`. Environment-provided keys do not make the file secret.
+
+The key is optional. Exactly three things use it: plain-English scenario authoring (`scenario create`), `pikopod fix`, and importing from a documentation URL as the last resort after the deterministic rungs fail. Everything else works with no key at all.
+
+## quotas
+
+Sandbox resource limits are fixed rather than configured:
+
+| Limit | Value |
+|---|---|
+| Stored resources per sandbox | 10,000 |
+| Total storage | 100 MiB |
+| Single resource | 256 KiB |
+
+Exceeding them returns `413` or `507` rather than degrading silently. Reset a sandbox's state with `pikopod sandbox reset <name>`.
+
+## Sandboxes
+
+Sandboxes are not a `pikopod.yaml` key. They are registered by `pikopod import` and stored in `<data_dir>/sandboxes.json` with their id, seed, spec source, origin, linked upstream, webhook URL and recordings-fallback flag. See [Importing](/sandbox/importing).
+
+## The init template
+
+`pikopod init` writes this file with mode `0600` and refuses to overwrite an existing one:
+
+```yaml
+# pikopod.yaml — see docs/config-reference.md for every key + default
+# listen: 127.0.0.1        # non-loopback requires PIKOPOD_TOKEN (env) or token_file
+# data_dir: pikopod-data
+
+upstreams:
+  # name each provider; your app's base URL points at http://127.0.0.1:4700/<name>
+  # (any HTTP API works — the name and target below are placeholders)
+  examplepay:
+    target: https://api.examplepay.com
+    # volatile_fields: [request_ref]   # extra per-provider normalization strips
+    # mute: ["/transaction/verify/{id}"]
+
+slack:
+  # webhook_url: https://hooks.slack.com/services/…   # alerts land here
+
+llm:
+  # provider: openai   # the provider your key belongs to
+  # api_key: sk-…      # for docs import, plain-English scenarios and pikopod fix; or PIKOPOD_LLM_KEY
+
+# warmup:                    # eval-only overrides; defaults 50 samples / 48h
+#   min_samples: 50
+#   min_hours: 48
+
+# refine:                    # contract refinement from observed traffic (off by default)
+#   enabled: true            # traffic grows an overlay beside the spec contract
+#   prefer_spec: false       # default: sustained traffic WINS type conflicts
+
+# sampling:                  # thin what recordings PERSIST — learning always sees everything
+#   rate: 0.1                # keep ~10% of routine records; errors/drift/pre-warmup always kept
+
+# retention:                 # age recordings + the drift-event log out of disk
+#   max_age_hours: 168       # kept >= this, deleted by ~2x this; 0 (default) = size-only rotation
+```
+
+## Validation errors
+
+Every configuration error names the key, the reason and the fix, and exits `2`. The ones you are most likely to meet:
+
+| Error | Fix |
+|---|---|
+| `refusing to bind <addr> without a token` | Set `PIKOPOD_TOKEN` or `token_file`, or keep the default `127.0.0.1`. |
+| `token file is readable by other users` | `chmod 600` the token file. |
+| `pikopod.yaml contains an llm API key but is readable by other users` | `chmod 600 pikopod.yaml`, or move the key to the environment. |
+| `tls needs both cert_file and key_file` | Set both, or neither. |
+| `upstream listen routes overlap` | Give each upstream a distinct, non-nested route. |
+| `upstream listen route cannot be /` | Use a named route like `/<name>`. |
+| `sampling.rate must be between 0 and 1` | Use a fraction, or omit the key. |
+| `configuration is not valid` | The message names the unknown key or the YAML syntax error. |
+
+`pikopod doctor` checks the file, the data directory, the salt, the ports and every upstream's reachability in one pass. See [Troubleshooting](/operations/troubleshooting).

@@ -1,0 +1,56 @@
+---
+title: Redaction
+description: Values are classified and rewritten on the way in. What reaches disk is what you would share.
+---
+
+Every recording is redacted before it is written. There is no raw copy anywhere, and there is no later clean-up step to forget.
+
+## The four outcomes
+
+| Outcome | Applied to | Result on disk |
+|---|---|---|
+| **Substitute** | Credentials, secrets, JWTs, card security codes, PINs, one-time codes, high-entropy strings | A typed placeholder: `<<SUBSTITUTE:api_key>>` |
+| **Tokenize** | Identifiers, emails, UUIDs, phone numbers, card and account numbers, expiry dates, long digit strings | A deterministic, format-preserving token. `tok_8f3a91` stays token-shaped, an email stays email-shaped, so path templates and correlation still work. |
+| **Drop** | Names, addresses, dates of birth, free text, and any string that cannot be classified | Removed entirely. The classifier fails closed on strings. |
+| **Allow** | Enum-like lowercase words (`pending`), HTTP methods, booleans, nulls, and numbers under keys not recognised as sensitive | Kept verbatim. |
+
+Detection is generic: key names, value shape, and entropy. Never a list of provider-specific prefixes, so it does not stop working when you add a provider nobody anticipated.
+
+## The one exception, stated plainly
+
+**Numbers, booleans and nulls are kept unless their key names them as sensitive.** A number carries no shape signal. `5000` could be an amount, an account number or a timestamp, so the key name is the only evidence. Keys that look like secrets, identifiers, card data, phone numbers or expiry dates are substituted or tokenized whatever the JSON type, because a card number sent as a number must not ride through on its type. But `"amount": 245000` under a key pikopod does not recognise is written verbatim.
+
+That is a deliberate trade. Dropping every unrecognised number would discard most of what makes a baseline useful. It is the one place redaction is not fail-closed, and `pikopod inspect` says so every time it prints a record.
+
+## Where it applies
+
+- **Request and response bodies.** JSON and form-encoded bodies are parsed and classified field by field. Numbers keep their literal digits. Any other content type is recorded as metadata only: kind and size, never content.
+- **Headers.** `Authorization`, `Proxy-Authorization`, API-key and signature headers become placeholders. `Cookie` and `Set-Cookie` are dropped. A short list of safe headers is kept: content type, accept, length, user agent, rate-limit remaining, request id, traceparent.
+- **Paths and query strings.** Every path segment is classified; anything that is not plainly safe is tokenized, so `/charges/ch_8f3a91` becomes `/charges/ch_<token>` and still matches its template. Query values are classified, and query keys that look like identifiers are tokenized too.
+- **Map keys.** A JSON key that looks like an identifier or an email is tokenized as well, because pointers into the record persist and would leak it.
+
+## What an imported contract changes
+
+When an upstream has an imported spec, a response field whose schema declares an `enum` keeps a value on disk only if that value is one of the declared members. `currency: NGN` survives because the provider published `[NGN, USD]`; the same field carrying `GHS` is classified exactly as it would be without the spec. Only enums stated in the spec or derived from it count. An enum a model extracted from prose unlocks nothing. Request bodies, headers and paths are untouched. `pikopod up` prints how many fields this applies to:
+
+```text
+spec-declared enums: 1 field(s) across 1 upstream(s) keep their declared values readable on disk
+```
+
+This is what makes a drift alert readable: `status: value "SUSPENDED" not in known set [ACTIVE]` rather than a set of tokens.
+
+## Tokens and the salt
+
+Tokenization is an HMAC keyed by a per-install salt at `<data_dir>/.salt`, so the same value always yields the same token inside your install and a meaningless one outside it. If a token would happen to equal the original value, it is re-derived. See [Security](/operations/security#the-salt).
+
+## What each record carries
+
+Besides the sanitized headers, bodies and path, every record carries the exact count of redactions and a list of the pointers that were redacted and how. That list is what lets the traffic overlay learn that a field was present even when its value never reached disk. See [Contract](/observe/contract).
+
+## Verify it yourself
+
+```bash
+pikopod inspect
+```
+
+`inspect` prints stored records with tokenized fields visible and a footnote naming the residual. A release-gating test seeds eighteen sentinel values (a secret, an email, a card number, a phone number, a PIN, a date of birth, a name, and more) into every position of a request and response, runs the full pipeline, and sweeps every persisted byte and every alert delivered. One sentinel byte anywhere is a release blocker.

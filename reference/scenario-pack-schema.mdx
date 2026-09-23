@@ -1,0 +1,86 @@
+---
+title: Scenario pack schema
+description: The full grammar of a scenario pack, as validated by schema/scenario-pack.schema.json.
+---
+
+The validator is strict on purpose: unknown keys are rejected, because a pack that references a missing operation, an unresolvable variable, or an impossible assertion is a broken test. The narrative guide is [Pack format](/scenarios/pack-format); this page is the grammar.
+
+## Top level
+
+| Key | Required | Type | Meaning |
+|---|---|---|---|
+| `name` | yes | string | The pack's name. `scenario run` resolves packs by it. |
+| `provider` | yes | string | Metadata. `scenario run` targets whatever sandbox you name on the command line. |
+| `description` | | string | |
+| `contractVersion` | | integer | Set by `from-drift` and `reproduce`. The pack runs at that overlay version. |
+| `definition` | yes | object | |
+
+## definition
+
+| Key | Required | Type | Meaning |
+|---|---|---|---|
+| `steps` | yes | array, at least one | |
+| `inputs` | | array | Declared inputs with `name`, `type`, `required`, `default`. |
+| `defaults` | | object | Fallback variable values. |
+| `requiresFidelity` | | `L0`, `L1`, `L2`, `L3` | |
+
+## step
+
+| Key | Required | Meaning |
+|---|---|---|
+| `key` | yes | Unique, matching `[A-Za-z0-9_.-]+`. |
+| `type` | yes | One of the step types below. |
+| `config` | yes | Type-specific. |
+| `description` | | |
+| `assertions` | | Array of assertions. |
+| `capture` | | Map of variable name to `source$jsonpath`. |
+| `continueOnFailure` | | boolean |
+| `timeoutMs` | | integer |
+
+### Step types and their config
+
+| `type` | `config` keys |
+|---|---|
+| `REQUEST` | `method`, `path` (sandbox-relative), `headers`, `query`, `body` |
+| `WAIT` | `durationMs` (virtual time) |
+| `EXPECT_WEBHOOK` | `match`, `timeoutMs` |
+| `INJECT_FAULT` | `kind`, `method`, `path`, `status`, `delayMs`, `probability`, `target`, `wallclock`, `times`, `per`, `delayDistribution` |
+| `CLEAR_FAULT` | `method`, `path` |
+| `VERIFY_REQUESTS` | `path`, `method` |
+| `VERIFY_SEQUENCE` | `requests` (ordered matchers, each with `method`, `path`, optional `headers`, `minGapMs`, `maxGapMs`) |
+| `EMIT_WEBHOOK` | `event`, `data` |
+| `ASSERT_STATE` | `resourceType`, `resourceId` |
+| `SEED_STATE` | `resources` (each with `type`, optional `resourceKey`, required `attributes`) |
+| `SNAPSHOT` | `label` |
+| `NOTE` | `text` |
+
+Fault `kind` values are listed in [Faults](/sandbox/faults). `times: N` fires the fault for the first N matching requests and then recovers; `per` scopes that window to `global`, `idempotency-key` or `resource`.
+
+## assertion
+
+| Key | Required | Meaning |
+|---|---|---|
+| `target` | yes | One of the targets below. |
+| `op` | yes | One of the ops below. |
+| `subject` | | `SANDBOX` (default), `CLIENT`, or `PRODUCTION`. |
+| `path` | | JSONPath into the target, starting `$.`. |
+| `key` | | Header name, for `response.headers`. |
+| `resourceType`, `resourceId` | | For state targets. |
+| `match` | | Matcher for webhook targets. |
+| `expected` | | The value, list, or matcher. |
+| `schemaRef` | | Required by `matchesSchema`. |
+| `soft` | | boolean. A soft failure does not fail the run. |
+
+Targets: `response.status`, `response.headers`, `response.body`, `response.latencyMs`, `state.resource`, `state.resourceCount`, `webhook.delivery`, `webhook.count`, `execution.faultApplied`, `sandbox.requestCount`, `sandbox.request`.
+
+Ops: `equals`, `notEquals`, `contains`, `notContains`, `in`, `matches`, `matchesSchema`, `exists`, `absent`, `gt`, `gte`, `lt`, `lte`, `countEquals`, `lengthEquals`, `isOneOf`.
+
+`in` and `isOneOf` are the same check; so are `countEquals` and `lengthEquals`. `matches` rejects an uncompilable regex at validation time.
+
+## Variables
+
+Reference variables as `{{name}}`. Precedence is inputs, then captures, then `defaults`. A variable must be declared, captured by an earlier step, or a generator: `{{seq()}}`, `{{randomString(n)}}`, `{{now()}}` (the virtual clock). `{{any:string|number|boolean|iso8601|uuid}}` stays verbatim in requests and is a matcher in assertions.
+
+## Limits
+
+1 MiB per file, 200 steps, 50 assertions per step, 1000 assertions total, 1000 seeded resources, 50 inputs, and 90 virtual days of accumulated `WAIT` and `EXPECT_WEBHOOK` time.

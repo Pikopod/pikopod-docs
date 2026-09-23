@@ -1,0 +1,34 @@
+---
+title: pikopod contract
+description: The effective contract, traffic-admitted additions, contradictions, pinned scenarios, and the observed state machine.
+---
+
+```text
+pikopod contract <sandbox> [--format text|json]
+```
+
+Works offline. With no traffic overlay it says so and points at `refine.enabled`. Otherwise it prints the overlay version, every traffic-admitted addition with the version it entered at, the contradictions between spec and traffic with both sides kept, the scenarios pinned to earlier versions, and the observed state machine when `behaviour.enabled` is on.
+
+```text
+examplepay — effective contract = spec + traffic overlay (upstream "examplepay")
+overlay version: 3 (sandboxes serve the latest; every response carries x-pikopod-contract-version)
+
+OBSERVED additions (traffic-admitted; the sandbox renders these):
+  v1   field     GET /charges/{id} 2xx                    refund_reason (string, presence 0.41)
+  v2   value     GET /charges/{id} 2xx                    status += "disputed"
+
+contradictions (spec vs traffic — both sides kept, never erased):
+  GET /charges/{id} 2xx  amount: spec says number, traffic says string (99% of clean samples) — winner: traffic
+
+pinned scenarios (immovable — each runs at its pin-time contract):
+  drift-385153d1776c             pinned at v1 — 2 version(s) behind
+
+observed state machine — examplepay
+
+  GET /charges/{id} · status          (412 transitions over 9 days)
+    pending      → succeeded      380
+    pending      → failed          31
+    never observed: failed → pending, succeeded → pending
+```
+
+`--format json` emits `{"sandbox", "upstream", "overlay", "behaviour"}`. See [Contract](/observe/contract) and [State machine](/observe/state-machine).

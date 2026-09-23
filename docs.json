@@ -1,0 +1,200 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "pikopod",
+  "description": "Rehearse API failures before you ship, and replay the ones production already hit.",
+  "colors": {
+    "primary": "#D9481F",
+    "light": "#F07A4F",
+    "dark": "#B93A16"
+  },
+  "favicon": "/favicon.svg",
+  "logo": {
+    "light": "/logo/light.svg",
+    "dark": "/logo/dark.svg",
+    "href": "https://pikopod.com"
+  },
+  "fonts": {
+    "heading": { "family": "Rubik" },
+    "body": { "family": "Rubik" }
+  },
+  "appearance": {
+    "default": "system"
+  },
+  "background": {
+    "color": {
+      "light": "#FBF9F4",
+      "dark": "#12151A"
+    }
+  },
+  "navbar": {
+    "links": [
+      { "label": "pikopod.com", "href": "https://pikopod.com" },
+      { "label": "Releases", "href": "https://github.com/pikopod/pikopod/releases" }
+    ],
+    "primary": {
+      "type": "github",
+      "href": "https://github.com/pikopod/pikopod"
+    }
+  },
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Getting started",
+            "pages": [
+              "getting-started/introduction",
+              "getting-started/installation",
+              "getting-started/quickstart",
+              "getting-started/the-loop",
+              "getting-started/coding-agents"
+            ]
+          },
+          {
+            "group": "Gate: catch declared changes in CI",
+            "pages": [
+              "gate/spec-diff",
+              "gate/severity",
+              "gate/multi-file-specs",
+              "gate/ci-integration"
+            ]
+          },
+          {
+            "group": "Sandbox: rehearse failures",
+            "pages": [
+              "sandbox/overview",
+              "sandbox/importing",
+              "sandbox/docs-url-import",
+              "sandbox/running",
+              "sandbox/faults",
+              "sandbox/modes",
+              "sandbox/webhooks",
+              "sandbox/request-journal",
+              "sandbox/recordings-tier",
+              "sandbox/limits"
+            ]
+          },
+          {
+            "group": "Scenarios",
+            "pages": [
+              "scenarios/overview",
+              "scenarios/archetypes",
+              "scenarios/binding",
+              "scenarios/running",
+              "scenarios/pack-format",
+              "scenarios/generated-packs",
+              "scenarios/plain-english"
+            ]
+          },
+          {
+            "group": "Observe: the agent",
+            "pages": [
+              "observe/overview",
+              "observe/data-plane-safety",
+              "observe/redaction",
+              "observe/warmup-and-baselines",
+              "observe/drift",
+              "observe/incidents",
+              "observe/alerts",
+              "observe/volatile-fields",
+              "observe/spec-watch",
+              "observe/contract",
+              "observe/state-machine",
+              "observe/replay-gate",
+              "observe/inspecting"
+            ]
+          },
+          {
+            "group": "Reproduce and fix",
+            "pages": [
+              "reproduce/reproduce",
+              "reproduce/incident-bundles",
+              "reproduce/fix",
+              "reproduce/pull-requests"
+            ]
+          },
+          {
+            "group": "Operations",
+            "pages": [
+              "operations/configuration",
+              "operations/deployment",
+              "operations/security",
+              "operations/data-directory",
+              "operations/exit-codes",
+              "operations/troubleshooting"
+            ]
+          },
+          {
+            "group": "Project",
+            "pages": [
+              "project/development",
+              "project/contributing",
+              "project/security-policy",
+              "project/license"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Reference",
+        "groups": [
+          {
+            "group": "CLI",
+            "pages": [
+              "reference/cli/overview",
+              "reference/cli/up",
+              "reference/cli/import",
+              "reference/cli/sandbox",
+              "reference/cli/scenario",
+              "reference/cli/chaos",
+              "reference/cli/mode",
+              "reference/cli/webhook",
+              "reference/cli/why",
+              "reference/cli/spec-diff",
+              "reference/cli/spec-update",
+              "reference/cli/incidents",
+              "reference/cli/replay",
+              "reference/cli/conformance",
+              "reference/cli/contract",
+              "reference/cli/status-report-inspect",
+              "reference/cli/ack-accept-baseline",
+              "reference/cli/volatile",
+              "reference/cli/fix",
+              "reference/cli/pr",
+              "reference/cli/mcp",
+              "reference/cli/init-doctor-demo"
+            ]
+          },
+          {
+            "group": "Interfaces",
+            "pages": [
+              "reference/control-plane",
+              "reference/mcp-tools",
+              "reference/environment-variables",
+              "reference/headers"
+            ]
+          },
+          {
+            "group": "Schemas",
+            "pages": [
+              "reference/drift-event-schema",
+              "reference/scenario-pack-schema",
+              "reference/incident-bundle"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/pikopod/pikopod",
+      "website": "https://pikopod.com"
+    }
+  },
+  "seo": {
+    "indexing": "all"
+  }
+}

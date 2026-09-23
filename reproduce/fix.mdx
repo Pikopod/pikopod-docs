@@ -1,0 +1,73 @@
+---
+title: Fix
+description: Turn a drift event into a code change in your repository, verified by your own check and reverted in full if it fails.
+---
+
+`pikopod fix` is opt-in twice over. It needs your own model key, and it sends excerpts of your source to that provider. It is the least mature part of pikopod, and this page says so plainly.
+
+```bash
+pikopod fix fp_385153d1776c --dir . --check "go build ./..." --pr
+```
+
+## What it does
+
+<Steps>
+  <Step title="Impact scan (deterministic)">
+    Derives search terms from the drift event: the drifted field's leaf name, or the literal segments of the endpoint. Then scans your repository for source files that contain them, literally and case-sensitively, skipping `node_modules`, `vendor`, `dist`, `build`, `target`, `testdata` and hidden directories. At most 12 files, 5 matched regions per file, 4 lines of context either side.
+
+    ```text
+    drift fp_385153d1776c: GET /transaction/tx_{id} — enum_value_new status
+    impact: 2 file(s) reference status
+      internal/payments/verify.go
+      internal/payments/verify_test.go
+    ```
+  </Step>
+  <Step title="Bounded patch from your model">
+    Sends the drift event and the numbered excerpts, never whole files, and asks for the smallest change. The reply is untrusted: an edit to a file outside the impact set, an ambiguous or oversized edit, or more than 20 edits is refused. Each edit's find text must occur exactly once in the file.
+  </Step>
+  <Step title="Apply, then check">
+    Applies the edits in your working tree. With `--check`, runs the command in the repository. If it fails, **every edit is reverted byte for byte**, and the command's output is shown whole.
+
+    ```text
+    applied 1 edit(s) to internal/payments/verify.go
+    check: go build ./...
+    check passed
+    fix is in your working tree: internal/payments/verify.go
+    review it, then carry it: pikopod fix fp_385153d1776c --pr   (or commit it yourself)
+    ```
+  </Step>
+  <Step title="Optionally open a pull request">
+    With `--pr`: branch, commit, push, and open a PR whose body carries the drift table, the summary, and the check that gated it.
+  </Step>
+</Steps>
+
+## Flags
+
+| Flag | Meaning |
+|---|---|
+| `--dir` | Repository to scan and fix. Default: the current directory. |
+| `--check` | Command that must pass after the fix. Failure reverts every edit. |
+| `--dry-run` | Print the proposed edits, change nothing. |
+| `--pr` | Branch, commit, push, and open a PR carrying the fix. |
+| `--branch`, `--base`, `--title` | PR details. Defaults: `pikopod/fix-<fingerprint>`, origin's HEAD, a title naming the drift. |
+| `--platform`, `--repo`, `--number`, `--sha`, `--api` | Forge coordinates. Detected from CI; see [Pull requests](/reproduce/pull-requests). |
+
+The argument is a fingerprint from the local event log or an [incident bundle](/reproduce/incident-bundles).
+
+## Known limitation, stated plainly
+
+The impact scan matches source text literally and case-sensitively. A client that spells the field differently (`accountNumber` for `account_number`), indexes it dynamically, or forwards the payload untouched is invisible to it. When the scan finds nothing, pikopod reports `UNVERIFIABLE` and exits `2` rather than reporting a clean result: it will not hand your CI a green gate on a silent miss.
+
+```text
+error: impact for fp_385153d1776c is UNVERIFIABLE: the scan matches source text literally and case-sensitively and found no occurrence of status under . — a client that renames the field (accountNumber for account_number), indexes it dynamically, or forwards the payload untouched is invisible to it → re-run with --dir <path> if the integration lives elsewhere, or search for the field yourself; do not read this as proof the field is unused
+```
+
+Treat a zero-impact answer as "look yourself", not as proof the field is unused.
+
+## Without a key
+
+The impact scan still runs; it is the deterministic half. The patch step refuses and says so. See [Configuration](/operations/configuration#llm) for the key.
+
+## Not available over MCP
+
+`fix` edits code with a model. It stays a human-operated command and is deliberately absent from the [MCP tools](/reference/mcp-tools).

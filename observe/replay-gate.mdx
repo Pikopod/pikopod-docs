@@ -1,0 +1,63 @@
+---
+title: Replay gate
+description: Gate builds offline on recorded traffic against frozen baselines.
+---
+
+```bash
+pikopod replay --ci
+pikopod replay --ci examplepay --handoff replay.json
+```
+
+```text
+examplepay: 37 recordings gated (1 pre-warmup skipped) — 0 finding(s)
+clean — no drift against frozen baselines
+```
+
+`replay --ci` reads each recorded response from `<data_dir>/recordings/<upstream>.ndjson` and diffs it against its frozen baseline family, entirely offline. No network, no provider account, no running agent.
+
+## What it compares
+
+Each JSON recording is matched to its `(method, template, status class)` family and diffed the same way live traffic is: fields added or removed, types changed, values outside the known set, a field arriving null, a status code moving within its class. Findings are deduplicated per method, template, kind, field and detail.
+
+```text
+examplepay: 37 recordings gated (1 pre-warmup skipped) — 2 finding(s)
+  DRIFT field_removed    GET /charges/{id}  refunded_at string
+  DRIFT type_changed     GET /charges/{id}  amount string
+
+drift found — failing the gate (exit 1)
+```
+
+## What it skips
+
+- Recordings whose family is not frozen yet. They are counted as pre-warmup skipped.
+- Non-JSON recordings.
+- New values on fields listed in `volatile_fields`. Presence, type and nullability of those fields are still checked.
+
+## Exit codes
+
+| Exit | When |
+|---|---|
+| `0` | Every gated recording matched. |
+| `1` | Drift found. |
+| `2` | No baselines or no recordings for an upstream, which is a tool problem, never conflated with drift. |
+
+## In CI
+
+The gate needs the `data_dir` the agent wrote, or a copy of it. Ship the `baselines/` and `recordings/` directories as an artifact, or mount the volume read-only:
+
+```bash
+./pikopod replay --ci --handoff replay.json
+./pikopod pr comment --handoff replay.json
+```
+
+The handoff is `{"source":"replay-ci","records":n,"findings":[…]}`. See [CI integration](/gate/ci-integration).
+
+## Recordings as scenarios
+
+For a regression suite that does not need the agent's data at all, turn a traffic window into an ordinary scenario pack and commit it:
+
+```bash
+pikopod scenario from-recordings examplepay --last 20 --name checkout-flow
+```
+
+See [Generated packs](/scenarios/generated-packs).

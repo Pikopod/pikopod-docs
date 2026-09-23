@@ -1,0 +1,95 @@
+---
+title: Contract
+description: The effective contract is the spec plus what traffic has taught it. Conformance asks whether the provider obeys its own spec.
+---
+
+Every imported field carries provenance: `EXPLICIT` (stated in the spec), `DERIVED` (a deterministic transformation of it), or `LLM_EXTRACTED` (model output). Observed traffic can add a fourth tier, `OBSERVED`, that sits between derived and extracted. The levels never merge.
+
+## Refinement
+
+```yaml
+refine:
+  enabled: true
+  prefer_spec: false
+```
+
+Off by default. When enabled, observed traffic accumulates an overlay beside the spec-derived contract, and observations that clear the gates are **admitted** into the effective contract the sandbox serves. Admission is journaled and versioned, so any historical version stays reproducible.
+
+What can be admitted, and the gate for each:
+
+| Admission | Gate |
+|---|---|
+| An undeclared field | Present in at least 20% of samples after the endpoint passed warmup |
+| A value on a declared enum | Seen at least 3 times |
+| An undeclared status code | Seen at least 3 times |
+| An undeclared endpoint | Passed warmup |
+| A type that contradicts the spec | 98% of clean samples agree, at least 10 of them, and `prefer_spec` is off |
+
+The warmup gate is the same `min_samples` and `min_hours` pair drift alerts use, so nothing enters the sandbox you were not told about first. A type conflict that does not clear its gate is still recorded as a contradiction; nothing is erased.
+
+The sanitizer is respected: a field whose value never reached disk still teaches presence, because the record carries the pointer that was redacted. It cannot teach a type.
+
+## Reading it
+
+```bash
+pikopod contract examplepay
+```
+
+```text
+examplepay — effective contract = spec + traffic overlay (upstream "examplepay")
+overlay version: 3 (sandboxes serve the latest; every response carries x-pikopod-contract-version)
+
+OBSERVED additions (traffic-admitted; the sandbox renders these):
+  v1   field     GET /charges/{id} 2xx                    refund_reason (string, presence 0.41)
+  v2   value     GET /charges/{id} 2xx                    status += "disputed"
+  v3   status    POST /charges 4xx                        += 422
+
+contradictions (spec vs traffic — both sides kept, never erased):
+  GET /charges/{id} 2xx  amount: spec says number, traffic says string (99% of clean samples) — winner: traffic
+
+pinned scenarios (immovable — each runs at its pin-time contract):
+  drift-385153d1776c             pinned at v1 — 2 version(s) behind
+```
+
+`--format json` emits the overlay and the state machine as one document. Every sandbox response carries `x-pikopod-contract-version`.
+
+Pinned scenarios come from `from-drift` and `reproduce`: a pack carries `contractVersion` and runs at that version whatever refinement admits later.
+
+## Conformance
+
+Drift is baseline-relative. Conformance is spec-relative: does the provider obey its own documentation?
+
+```bash
+pikopod conformance examplepay
+pikopod conformance examplepay --strict      # exit 1 on error-severity violations
+```
+
+```text
+examplepay — 37 JSON response(s) checked against the spec (2 skipped: non-JSON or no declared endpoint)
+3 check(s) unverifiable: the sanitizer redacted the evidence — reported as neither pass nor violation
+
+1 violation(s) — the provider disagrees with its own documentation:
+  error   enum      GET /charges/{id} 200  /status                 value "disputed" not in documented set [pending, succeeded, failed] (4 occurrence(s))
+
+these are SPEC-relative findings; `pikopod contract` shows what traffic has taught the sandbox instead
+```
+
+| Code | Meaning | Severity |
+|---|---|---|
+| `required` | A documented required property is absent | error |
+| `type` | The wire type differs from the documented one, or a non-nullable field is null | error |
+| `enum` | A value outside the documented set | error |
+| `status_undeclared` | A status the operation does not declare | error for 2xx, warning otherwise |
+| `composition` | A body matches none of the documented `oneOf` or `anyOf` variants | error |
+
+A check whose evidence the sanitizer redacted is counted as unverifiable and never scored as a pass. Values of curated volatile fields are exempt from enum checks. Without `--strict`, conformance exits `0` regardless; with it, an error-severity violation exits `1`. `--handoff` writes the report for `pikopod pr comment`.
+
+## Spec update
+
+Both signals can become a patch to the original document:
+
+```bash
+pikopod spec-update examplepay --out openapi.patched.yaml --handoff update.json
+```
+
+Additive changes (a new field, a new enum value, a new status) are applied in place, format-preserving. Narrowings are listed as suggestions and never applied. See [`pikopod spec-update`](/reference/cli/spec-update).

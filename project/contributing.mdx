@@ -1,0 +1,53 @@
+---
+title: Contributing
+description: How to propose a change to pikopod.
+---
+
+pikopod is pre-v1 and every provider is a new edge case. The most valuable contribution right now is a bug report from a real integration: a provider whose spec is imported badly, a drift that is missed, or a drift that is invented.
+
+## Getting help
+
+- Bugs and feature requests: [GitHub issues](https://github.com/pikopod/pikopod/issues), so the discussion stays attached to the work.
+- Design or usage questions: [GitHub discussions](https://github.com/pikopod/pikopod/discussions).
+- A scoped starting point: [good first issues](https://github.com/pikopod/pikopod/labels/good%20first%20issue).
+
+Please read and follow the [code of conduct](https://github.com/pikopod/pikopod/blob/main/CODE_OF_CONDUCT.md).
+
+## Ways to contribute
+
+- Report a bug or request a feature.
+- Improve docs, tests, examples, packaging, or platform support.
+- Add support for a spec format or a provider shape pikopod handles poorly.
+
+## Submitting a pull request
+
+<Steps>
+  <Step title="Fork and branch">
+    Create a focused branch. Keep the change scoped to one bug fix, feature, or documentation improvement.
+  </Step>
+  <Step title="Add a failing test first">
+    Add a test that fails before your change and passes after. If you are fixing a bug, the bug should be reproduced first.
+  </Step>
+  <Step title="Leave goldens alone">
+    Do not hand-edit files under `testdata/parity/`. They are maintainer-regenerated. If your change legitimately moves a golden, say so in the pull request and expect the parity job to be red until a maintainer regenerates it. See [Development](/project/development#parity-goldens).
+  </Step>
+  <Step title="Run the suite as CI runs it">
+    ```bash
+    go test ./... -race -count=1
+    go vet ./...
+    gofmt -l .
+    ```
+  </Step>
+  <Step title="Commit and sign off">
+    Use [conventional commits](https://www.conventionalcommits.org/en/v1.0.0/) and sign off with `git commit -s`. pikopod uses the [DCO](https://developercertificate.org/), not a CLA, so you keep your copyright.
+  </Step>
+  <Step title="Open the pull request">
+    Include a clear summary and a test plan. If you are unsure which checks apply, say so.
+  </Step>
+</Steps>
+
+## Filing an issue
+
+The most useful report includes the provider, the spec you imported, what pikopod said, and what you expected instead. Redact freely: `pikopod inspect` shows you what is safe to share.
+
+For security issues, do not open an issue. See the [security policy](/project/security-policy).

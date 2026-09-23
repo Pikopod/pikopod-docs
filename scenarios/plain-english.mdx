@@ -1,0 +1,45 @@
+---
+title: Plain English
+description: Draft a scenario from a sentence, grounded against the operations your API actually has.
+---
+
+```bash
+pikopod scenario create examplepay "timeout after the charge succeeds"
+```
+
+```text
+grounding "timeout after the charge succeeds" against examplepay (4 operations, 10 applicable archetypes)…
+
+drafted from archetype timeouts (confidence 0.91):
+
+name: timeout-after-the-charge-succeeds
+provider: examplepay
+…
+
+save this pack? [y/N]
+```
+
+Needs your own model key. See [Configuration](/operations/configuration#llm).
+
+## The model never writes steps
+
+It emits a constrained intent: which archetype, which operations fill its roles, and any extra assertions, validated against operations that actually exist in your imported API. The intent is then expanded deterministically into steps. The model cannot invent an endpoint, and it must declare what your request asked for that it failed to capture:
+
+```text
+not captured by this draft: the webhook should arrive twice
+```
+
+A draft that does not ground is refused with the reason, and the fix is to rephrase using operations your API has (`pikopod scenario list <sandbox>` shows them).
+
+## Flags
+
+| Flag | Meaning |
+|---|---|
+| `--yes` | Save without the confirmation prompt. |
+| `--model <name>` | Override the provider's default model for this run. |
+
+The pack is written to `<data_dir>/scenarios/<slug>.yaml`, mode `0600`. Run it with `pikopod scenario run <sandbox> <slug>`.
+
+## What leaves the machine
+
+Your description, plus the operation inventory of the imported spec. Nothing from recordings. See [Security](/operations/security#what-leaves-the-machine).

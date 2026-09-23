@@ -1,0 +1,170 @@
+---
+title: MCP tools
+description: Every tool pikopod mcp serves, its arguments, and how its verdict is decided.
+---
+
+`pikopod mcp` speaks JSON-RPC 2.0 over stdin and stdout, one message per line, protocol version `2024-11-05`. It supports `initialize`, `ping`, `tools/list` and `tools/call`. Every call returns a result with a `verdict` and, on `UNVERIFIABLE`, a `reason`. Unknown arguments are refused. See [Coding agents](/getting-started/coding-agents) for the client setup and the verdict contract.
+
+Result shape:
+
+```json
+{
+  "verdict": "CLEAN | FINDINGS | UNVERIFIABLE | ERROR",
+  "reason": "present on UNVERIFIABLE",
+  "warmup": { "...": "present on drift_events" },
+  "data": { "...": "tool-specific" },
+  "error": { "what": "", "why": "", "fix": "", "docs": "" }
+}
+```
+
+## Readers
+
+### spec_diff
+
+Diff two spec versions as declared drift with a severity per finding. It sees only what the documents declare; behaviour a provider changed without updating its spec is invisible here.
+
+| Argument | Required | Meaning |
+|---|---|---|
+| `old` | yes | Older spec source: file path, URL, or `git:<ref>:<path>` |
+| `new` | yes | Newer spec source |
+| `fail_on` | | `ERR` (default), `WARN` or `INFO` |
+
+`FINDINGS` when anything at or above `fail_on` exists, else `CLEAN` with lower findings attached. `data` carries `fail_on`, `summary` and `findings` with fingerprints.
+
+### drift_events
+
+Drift events and incidents the agent recorded for an upstream. Reports only changes observed in traffic that passed warmup.
+
+| Argument | Required | Meaning |
+|---|---|---|
+| `upstream` | yes | Upstream name from `pikopod.yaml` |
+| `since` | | Window such as `24h` |
+| `level` | | `ERR`, `WARN` or `INFO` |
+| `limit` | | Max events, default 50 |
+
+`FINDINGS` when events exist. `UNVERIFIABLE` when the upstream has no baselines yet, or when no endpoint has passed warmup, with the samples seen and the gate. `CLEAN` otherwise, naming how many endpoint families are warmed up and how many are still warming. Every result carries a `warmup` block: gate values, per-family samples, and the standing notice that an endpoint with no traffic is invisible.
+
+### replay_ci
+
+The CI gate: recorded traffic against frozen baselines, offline.
+
+| Argument | Required | Meaning |
+|---|---|---|
+| `upstreams` | | Upstreams to gate. Default: all. |
+
+`FINDINGS` lists drift per endpoint. `CLEAN` means every gated recording matched. `UNVERIFIABLE` with a reason when an upstream has no baselines or no recordings. Recordings made before an endpoint warmed up are skipped and counted.
+
+### conformance
+
+Whether an upstream's recorded responses obey its imported spec.
+
+| Argument | Required | Meaning |
+|---|---|---|
+| `upstream` | yes | Upstream name |
+
+`FINDINGS` lists violations. Checks whose evidence the sanitizer redacted are counted as unverifiable and never scored as passes. With no violations and some unverifiable checks the verdict is `UNVERIFIABLE`.
+
+### reproduce
+
+Turn a recorded incident into a runnable scenario pack and run it against the local sandbox. Writes one pack file under `data_dir/scenarios` and touches nothing else.
+
+| Argument | Required | Meaning |
+|---|---|---|
+| `fingerprint` | yes | `fp_…` from `drift_events` |
+| `sandbox` | | Sandbox to run against. Default: the incident's upstream. |
+
+`FINDINGS` with `reproduced: true` means the failure now happens locally, and `data` carries the pack name and path. `UNVERIFIABLE` when the pack ran but the failure did not recur, or when no sandbox exists to run it against. The request is rebuilt from a redacted recording, so a 4xx that depended on the exact body may not recur.
+
+### scenario_list
+
+Which failure archetypes bind to a sandbox's API, and why the rest do not.
+
+| Argument | Required | Meaning |
+|---|---|---|
+| `sandbox` | yes | Sandbox name |
+
+`CLEAN` when at least one archetype binds. `UNVERIFIABLE` when none does, with every reason attached. `data` carries the archetypes, saved packs, and endpoint count.
+
+### scenario_run
+
+Run archetypes or packs against a throwaway copy of a sandbox. The served sandbox is untouched, and this drives pikopod's own requests, not the caller's application.
+
+| Argument | Required | Meaning |
+|---|---|---|
+| `sandbox` | yes | Sandbox name |
+| `names` | yes | Archetype ids or pack names |
+| `bind` | | Role to operationId overrides |
+
+`CLEAN` when all pass, `FINDINGS` when any fails, `ERROR` when a step could not execute. `data.runs` carries each scenario's result.
+
+### get_requests
+
+What the caller's application actually sent to a running sandbox: the request journal, newest last, with identifiers tokenized.
+
+| Argument | Required | Meaning |
+|---|---|---|
+| `sandbox` | yes | Sandbox name |
+| `last` | | How many newest entries, default 50 |
+
+Needs `pikopod up`. When older entries were evicted the result says so, because ordering claims across the gap cannot be proven.
+
+## Controls over the running sandbox
+
+These need `pikopod up` and act on a local fake, never on a provider.
+
+### set_mode
+
+Put the running sandbox into a scenario's failure state so the caller's own tests meet it. The mode stands until `clear_mode`.
+
+| Argument | Required | Meaning |
+|---|---|---|
+| `sandbox` | yes | Sandbox name |
+| `name` | yes | Archetype id or pack name |
+| `bind` | | Role to operationId overrides |
+
+Scenarios that have no standing state are refused with the reason.
+
+### clear_mode
+
+Clear the standing mode and every fault it armed.
+
+| Argument | Required |
+|---|---|
+| `sandbox` | yes |
+
+### arm_fault
+
+Arm one fault. HTTP faults need `method` and `path`; webhook faults match by `event`.
+
+| Argument | Required | Meaning |
+|---|---|---|
+| `sandbox` | yes | Sandbox name |
+| `kind` | yes | One of the fault kinds in [Faults](/sandbox/faults) |
+| `method`, `path` | HTTP kinds | Target operation, path template as in the spec |
+| `status` | | For `error`, default 500 |
+| `event` | | For webhook kinds, default any |
+| `probability` | | `0..1`, default 1 |
+| `delay_ms` | | For `latency` and `delay_webhook` |
+
+### clear_faults
+
+Clear faults matching `method` and `path`, or every fault when both are omitted.
+
+| Argument | Required |
+|---|---|
+| `sandbox` | yes |
+| `method`, `path` | |
+
+### emit_webhook
+
+Fire a declared event, signed and shaped the way the sandbox's spec declares, to the sandbox's configured webhook URL. Undeclared events are refused.
+
+| Argument | Required | Meaning |
+|---|---|---|
+| `sandbox` | yes | Sandbox name |
+| `event` | yes | Declared event name |
+| `data` | | Fields overlaid onto the documented payload |
+
+## Deliberately absent
+
+`fix`, `import`, `chaos`, `ack`, `accept`, `up` and every reset. They stay human-operated commands, and a test fails the build if any of them appears in the tool list.

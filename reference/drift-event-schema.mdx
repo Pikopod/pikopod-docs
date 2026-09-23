@@ -1,0 +1,78 @@
+---
+title: Drift event schema
+description: The one shape pikopod emits for a drift or an incident, to stdout, to Slack, and to the event log.
+---
+
+The schema is published at `schema/drift-event.schema.json` in the repository. This is what `pikopod incidents --format json` returns per event, what lands in `<data_dir>/events.ndjson` one object per line, and what an alert carries.
+
+```json
+{
+  "schema_version": "2",
+  "fingerprint": "fp_14835fa32dfb",
+  "upstream": "examplepay",
+  "method": "POST",
+  "endpoint": "/charges",
+  "status_class": "5xx",
+  "kind": "upstream_error",
+  "after": "503",
+  "first_seen": "2026-09-18T10:00:00Z",
+  "last_seen": "2026-09-19T10:00:00Z",
+  "occurrences": 4,
+  "level": "ERR"
+}
+```
+
+## Fields
+
+| Field | Type | Required | Meaning |
+|---|---|---|---|
+| `schema_version` | string | yes | `"2"` |
+| `fingerprint` | string | yes | Stable id of the divergence, `fp_` plus 12 hex characters. Same diff, same fingerprint, across occurrences. |
+| `upstream` | string | yes | The upstream name from `pikopod.yaml`. |
+| `method` | string | yes | HTTP method. |
+| `endpoint` | string | yes | Path **template**, never a concrete path. Concrete identifiers never egress. |
+| `status_class` | string | yes | `2xx`, `3xx`, `4xx`, `5xx`, or empty on declared events. |
+| `kind` | string | yes | See below. |
+| `field` | string | | Field path within the body, slash-joined, when the kind concerns a field. |
+| `before` | string | | Reference-side view: dominant type, known value set, or prior status. |
+| `after` | string | | Observed-side view: new type, new value, or the concrete status of an incident. |
+| `first_seen`, `last_seen` | date-time | yes | |
+| `occurrences` | integer | yes | At least 1. |
+| `source` | string | | Absent for observed drift. `declared` when the provider changed their spec. |
+| `level` | string | | `ERR`, `WARN` or `INFO`. |
+| `detail` | string | | Pre-rendered sentence for declared findings. |
+| `note` | string | | Join context, for example that the provider's new spec documents the change. |
+
+## Kinds
+
+Shape kinds describe a successful response whose shape changed against a frozen baseline:
+
+| Kind | Meaning |
+|---|---|
+| `field_added` | A field appeared. |
+| `field_removed` | A field that was always present is gone. |
+| `type_changed` | A field's type changed. |
+| `enum_value_new` | A value outside the known set. |
+| `field_nullable` | A never-null field arrived null. |
+| `status_code_changed` | The exact code moved within a known class. |
+| `status_new` | A status class this endpoint never returned. |
+| `error_shape_changed` | A 4xx or 5xx body was restructured. |
+
+Incident kinds describe an exchange that failed. They need no baseline:
+
+| Kind | Meaning |
+|---|---|
+| `upstream_error` | The upstream answered 5xx. |
+| `upstream_unreachable` | pikopod could not reach the upstream and returned its own 502. |
+| `rate_limited` | The upstream answered 429. |
+| `client_error` | The upstream answered 4xx. Opt-in. |
+
+Declared events carry `declared:<check-id>`, for example `declared:endpoint-removed`, with the check IDs from [Severity](/gate/severity).
+
+## Compatibility rule
+
+Consumers must ignore unknown fields, and must ignore kinds they do not recognise. New kinds and new fields may be added without a version bump. `schema_version` moves only for a structural change: a field removed, a type changed, or an existing field's meaning changed. See [Exit codes](/operations/exit-codes#schema-versions).
+
+## Reading the log
+
+`pikopod incidents --format json` returns `{"schema_version", "total_matching", "truncated", "events"}`. `total_matching` and `truncated` are always present, so a shortened list can never be mistaken for a clean one. Events are sorted newest first by `last_seen`, and the log keeps the latest state per fingerprint.

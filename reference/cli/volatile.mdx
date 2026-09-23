@@ -1,0 +1,29 @@
+---
+title: pikopod volatile
+description: Suggest volatile_fields entries from recorded churn, and lint the ones you have.
+---
+
+```text
+pikopod volatile suggest <upstream>
+```
+
+Analyzes recorded traffic and proposes entries for `upstreams.<name>.volatile_fields`, or refuses with a typed reason. Works offline; needs recordings.
+
+```text
+37 recording(s) analyzed
+
+2 suggestion(s) — every field carrying the name is proven churn:
+  request_ref              37/37 distinct values across [POST /charges]
+  generated_at             37/37 distinct values across [GET /charges]
+add the ones you agree with under upstreams.examplepay.volatile_fields in pikopod.yaml
+
+1 refusal(s) — churn that did NOT become a suggestion, with why:
+  status                   TYPE_UNSTABLE        type flips across records (string, null) — that is a drift finding (GET /charges/{id})
+
+1 DEAD configured entr(ies) — matching nothing in 37 recent recording(s):
+  request_id
+```
+
+A field is suggested only when its churn is proven: at least ten observations, a stable type, never a container, never a value the sanitizer rewrote, and at least half of its observations distinct. A refused case stays visible with the reason. Configured entries that match nothing are listed as dead.
+
+`pikopod up` runs the same lint at startup and prints dead, stable and over-broad entries. See [Volatile fields](/observe/volatile-fields).

@@ -1,0 +1,110 @@
+---
+title: Spec diff
+description: Fail the build on a breaking spec change. No proxy, no account, nothing in your request path.
+---
+
+The cheapest thing pikopod does needs no config file, no sandbox and no running process. It diffs two versions of a spec and fails your build on a breaking change.
+
+```bash
+pikopod spec-diff git:origin/main:openapi.yaml openapi.yaml --fail-on ERR
+```
+
+```text
+1 change(s): 1 ERR, 0 WARN, 0 INFO
+
+ERR  GET    /charges/{id}                            endpoint-removed
+     endpoint removed from the spec  [fp_bcc85ba9a094]
+
+breaking declared drift at/above ERR — failing the gate (exit 1)
+```
+
+## Sources
+
+Each side is a local file, an `http(s)` URL, or `git:<ref>:<path>`, which reads straight from git object storage with no checkout.
+
+| Source | Example |
+|---|---|
+| Local file | `openapi.yaml` |
+| URL | `https://api.examplepay.test/openapi.json` |
+| Git ref | `git:origin/main:openapi.yaml` |
+
+<Warning>
+The `git:` prefix is required. `origin/main:openapi.yaml` without it is treated as a local file path and fails with `cannot read watched spec file` and exit `2`.
+</Warning>
+
+Both sides are normalized to pikopod's internal representation first, so OpenAPI 3.x, Swagger 2.0 and Postman collections all diff, even against each other. A spec split across files works when the source is a file or a git ref; see [Multi-file specs](/gate/multi-file-specs).
+
+## Exit codes
+
+| Exit | When |
+|---|---|
+| `0` | Nothing at or above `--fail-on`. |
+| `1` | Something at or above `--fail-on` exists. Breaking declared drift. |
+| `2` | A document could not be loaded or normalized. A spec that fails to load is a tool problem, not drift, and is never reported as `1`. |
+
+`--fail-on` accepts `ERR` (default), `WARN` or `INFO`.
+
+## Output formats
+
+`--format` accepts `text` (default), `json`, `markdown` and `githubactions`.
+
+<Tabs>
+  <Tab title="text">
+    A summary line, one block per finding with the check ID and a stable fingerprint, and a trailer on stderr when the gate fails.
+
+    ```text
+    6 change(s): 0 ERR, 6 WARN, 0 INFO
+
+    WARN GET    /charges/{id}                            response-required-property-removed
+         response 200 (application/json) field `status` (guaranteed) removed — consumers reading it break  [fp_57f7a3158a88]
+    ```
+  </Tab>
+  <Tab title="githubactions">
+    One workflow command per finding, carrying the file, line and column the change came from, so it appears inline on the pull request diff rather than only in the log.
+
+    ```text
+    ::error file=openapi.yaml,line=212,col=5,title=endpoint-removed::endpoint-removed: GET /charges/{id} — endpoint removed from the spec
+    ```
+
+    Positions come from the parsed document. For a minified single-line JSON file every finding points at line 1.
+  </Tab>
+  <Tab title="markdown">
+    A table suitable for a pull request comment. `pikopod pr comment --handoff report.json` posts it and updates it in place on re-runs.
+  </Tab>
+  <Tab title="json">
+    The full report. Pass `--handoff report.json` to write the same JSON alongside any other format.
+  </Tab>
+</Tabs>
+
+## What a finding carries
+
+Every finding has a check ID (`endpoint-removed`, `response-required-property-removed`, `request-type-changed`, and so on), a level, the method and path template, a human detail line, and a fingerprint `fp_…` that identifies the change stably across runs. Findings on the new document also carry a JSON pointer into the source so tools can point at the exact line.
+
+Severity is never hand-assigned per check. One function maps the shape of a change onto `ERR`, `WARN` or `INFO`. See [Severity](/gate/severity).
+
+## Examples of what moves the gate
+
+| Change | Level | Why |
+|---|---|---|
+| An endpoint removed | `ERR` | Consumers calling it break. |
+| A response field's type changed (`integer` → `string`) | `ERR` | Consumers reading it break. |
+| A required response field removed or made optional | `WARN` | The presence guarantee was withdrawn. Traffic evidence that consumers receive it today raises it to `ERR` inside `pikopod up`. |
+| A request field removed from the schema | `WARN` | The provider stopped accepting something you may send. |
+| A new optional response field | `INFO` | Additive. |
+
+## From the same command in CI
+
+```yaml
+- run: |
+    VERSION=0.1.1
+    curl -fsSL "https://github.com/Pikopod/pikopod/releases/download/v${VERSION}/pikopod_${VERSION}_linux_amd64.tar.gz" | tar xz
+    ./pikopod spec-diff git:origin/main:openapi.yaml openapi.yaml --format githubactions --fail-on ERR
+```
+
+Pin the version. CI should not float on latest. The full recipe, including posting a comment and the safe-directory fix for CI containers, is in [CI integration](/gate/ci-integration).
+
+## Related
+
+- [`pikopod spec-diff` reference](/reference/cli/spec-diff)
+- [Spec watch](/observe/spec-watch): the same diff, re-run on a schedule against your pinned import.
+- [Spec update](/reference/cli/spec-update): turn traffic evidence into additive spec patches.

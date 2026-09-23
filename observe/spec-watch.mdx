@@ -1,0 +1,78 @@
+---
+title: Spec watch
+description: Re-fetch the provider's published spec, diff it against your pin, and join it with what traffic shows.
+---
+
+A spec-diff tool reads what the provider *published*. Monitoring sees your traffic but throws response bodies away. The agent holds both, so it can say things neither can.
+
+## Arming it
+
+```yaml
+upstreams:
+  examplepay:
+    target: https://api.examplepay.com
+    spec_source: https://api.examplepay.com/openapi.json
+spec_watch:
+  interval_minutes: 60
+```
+
+`spec_source` accepts an `http(s)` URL, a local file, or `git:<ref>:<path>`. The watcher is part of `pikopod up`, not a separate command, and arms per upstream:
+
+```text
+spec watch ON: 1 declared source(s), re-checked every 1h0m0s
+```
+
+## What it does
+
+Every interval it re-fetches the source. Fetches are ETag-gated, and unchanged bytes are never re-normalized. When the document changed, it is diffed against your **pin**, the contract you imported, with the same checks and the same severity law as `pikopod spec-diff`. Every finding becomes a declared-drift event with `source: declared` and a `declared:<check-id>` kind, alerting on first occurrence because a spec diff is deterministic.
+
+A document that fails to fetch or parse is reported, and the watcher keeps its previous state rather than going dark. A spec of more than 32 MiB is refused, never truncated.
+
+## The pin never advances on its own
+
+Accepting a declared change is explicit:
+
+```bash
+pikopod import examplepay --update
+```
+
+```text
+accepting 1 declared change(s):
+1 change(s): 1 ERR, 0 WARN, 0 INFO
+
+ERR  GET    /charges/{id}                            endpoint-removed
+     endpoint removed from the spec  [fp_bcc85ba9a094]
+pin refreshed for examplepay (3 endpoints) — restart `pikopod up` to serve the updated contract
+```
+
+`--update` re-imports from the recorded source (or `--spec`), keeps the sandbox's webhook envelope and event bindings, and resets the watcher's pin.
+
+## The join, both directions
+
+**Traffic raises a declared finding.**
+
+| Declared change | Traffic evidence | Result |
+|---|---|---|
+| An endpoint removed | Requests still flowing to it | Raised to `ERR`, with "STILL RECEIVING TRAFFIC (n samples, last seen …)" |
+| A required response field removed or made optional | Consumers receive it in at least 98% of samples | Raised to `ERR`, with "consumers receive this field today" |
+| A response enum value removed | Traffic still carries the value | Raised to `WARN`, "the spec now disagrees with the wire" |
+| A response status removed | Traffic still returns it | Raised to `ERR` |
+
+**A declared change downgrades an observed finding.** When the provider's new spec declares a field, an enum value, a status or an endpoint that traffic then shows for the first time, the observed drift is marked documented and delivered at `INFO`:
+
+```text
+[INFO] pikopod drift — new field on GET /charges/{id} (examplepay)
+`refund_reason` (string) appeared in responses
+documented: the provider's new spec version declares this change
+```
+
+The fingerprint never moves in either direction. Only the level and the detail do.
+
+## Health
+
+`/healthz` carries a `spec_watch` block per source with the last check, last change, spec version, finding count and last error. `pikopod status` shows it.
+
+## Related
+
+- [Spec diff](/gate/spec-diff), the same diff as a CI gate.
+- [Spec update](/reference/cli/spec-update), turning traffic evidence into additive spec patches.

@@ -1,0 +1,73 @@
+---
+title: Incidents
+description: An exchange that failed. Needs no baseline, fires from the first request, and is always reproducible.
+---
+
+An incident is a fact about one request, so it needs no baseline and is never subject to the warmup window.
+
+## The four kinds
+
+| Kind | Fires when | Level | Default |
+|---|---|---|---|
+| `upstream_error` | The upstream answered 5xx. | `ERR` | Always on |
+| `upstream_unreachable` | pikopod could not reach the upstream and returned its own 502. Never retried. | `ERR` | Always on |
+| `rate_limited` | The upstream answered 429. | `WARN` | Always on |
+| `client_error` | The upstream answered 4xx above a configured rate. | `WARN` | Opt-in |
+
+The first three are never normal and cannot be switched off.
+
+## Why 4xx is opt-in
+
+A 4xx is usually the caller's own bug, which is exactly why an integration tool should be able to catch it. But an endpoint where a 401 is the normal answer would page you all day.
+
+```yaml
+upstreams:
+  examplepay:
+    incidents:
+      client_errors: true       # default false
+      client_error_rate: 0.05   # default 0.05
+```
+
+`client_error_rate` is the share of requests to one endpoint family that must be 4xx before one is reported. Below 20 requests to a family no rate is claimed at all, because the first 4xx is a rate of 1.0 and means nothing.
+
+## The recording is the reproduction
+
+An incident forces its recording to disk regardless of `sampling.rate`. Sampling it away would leave you with an alert pointing at something you cannot run.
+
+## Listing them
+
+```bash
+pikopod incidents
+pikopod incidents --only incidents --since 24h
+pikopod incidents --kind upstream_error --upstream examplepay --format json
+```
+
+```text
+[] incident upstream_error         POST /charges (examplepay) · 4 occurrence(s) · last 2026-09-19T10:00:00Z
+  fp_14835fa32dfb
+  reproducible until 2026-09-26T10:00:00Z
+  reproduce: pikopod scenario reproduce fp_14835fa32dfb
+  export: pikopod incidents export fp_14835fa32dfb
+```
+
+`incidents` is a reader, not a gate: it exits `0` whether or not it found anything. The `reproducible until` line appears when `retention.max_age_hours` bounds how long the recording stays on disk. `--format json` always carries `total_matching` and `truncated`. See [`pikopod incidents`](/reference/cli/incidents).
+
+## Reproducing one
+
+```bash
+pikopod scenario reproduce fp_14835fa32dfb
+```
+
+The incident becomes a scenario pack that arms the same failure in the sandbox and replays the recorded request at it. For a 5xx or an unreachable upstream the fault is armed on method and path, so it reproduces regardless. For a 4xx the body matters, and the body is redacted, so check the pack against what your code actually sends. When the agent runs on another host, `pikopod incidents export <fp>` writes a bundle that `reproduce` accepts anywhere. See [Reproduce](/reproduce/reproduce).
+
+## In an alert
+
+```text
+[ERR] pikopod incident — upstream failed on POST /charges (examplepay)
+upstream answered 503 — reproduce it locally: pikopod scenario reproduce fp_14835fa32dfb
+fingerprint fp_14835fa32dfb · first seen 2026-09-18T10:00:00Z · 4 occurrence(s) · reproducible until 2026-09-26T10:00:00Z
+export: pikopod incidents export fp_14835fa32dfb
+replay it: pikopod scenario reproduce fp_14835fa32dfb
+```
+
+Incidents follow the same dedupe and threshold rules as drift: one alert per fingerprint, after three occurrences in fifteen minutes. See [Alerts](/observe/alerts).

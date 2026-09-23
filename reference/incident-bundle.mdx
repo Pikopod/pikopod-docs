@@ -1,0 +1,50 @@
+---
+title: Incident bundle
+description: The self-contained file pikopod incidents export writes, and what reproduce and fix accept.
+---
+
+A bundle carries one incident from the host that recorded it to any machine that will reproduce or fix it. It holds the event, the already-redacted recording and the contract version, and nothing else: no salt, no token, no configuration.
+
+```json
+{
+  "schema_version": 1,
+  "exported_at": "2026-09-22T14:12:54Z",
+  "source": { "host": "agent-7", "data_dir": "pikopod-data" },
+  "expires_at": "2026-09-21T10:00:00Z",
+  "event": { "schema_version": "2", "fingerprint": "fp_14835fa32dfb", "...": "a drift event" },
+  "recording": { "ts": "2026-09-19T10:00:00Z", "method": "POST", "path": "/charges", "status": 503, "...": "a sanitized record" },
+  "contract_version": 0
+}
+```
+
+| Field | Meaning |
+|---|---|
+| `schema_version` | `1`. A bundle with another version is refused. |
+| `exported_at` | When the export ran, UTC. |
+| `source.host`, `source.data_dir` | Where it came from. Provenance only. |
+| `expires_at` | When the origin host's retention will have aged the incident out. Present only when `retention.max_age_hours` is set. The bundle itself keeps working after this time. |
+| `event` | The [drift event](/reference/drift-event-schema). |
+| `recording` | The sanitized exchange: method, path, status, redacted headers and bodies. |
+| `contract_version` | The overlay version at the time of the incident, so the reproduction runs at the same contract. `0` when there is no overlay. |
+
+## Producing one
+
+```bash
+pikopod incidents export fp_14835fa32dfb > incident.json
+pikopod incidents export --since 24h > incidents.json
+```
+
+The first writes one bundle. The second writes a JSON array of every incident last seen in the window.
+
+## Consuming one
+
+```bash
+pikopod scenario reproduce ./incident.json
+pikopod fix ./incident.json --check "go build ./..."
+```
+
+Both read nothing from the local `data_dir`. An argument is treated as a bundle path when it ends in `.json`, contains a path separator, or exists as a file; a fingerprint always starts with `fp_`, so the two are never confused.
+
+## Safety on the way back in
+
+A bundle is untrusted input. `schema_version` is checked first, unknown fields are refused, an incomplete bundle (no event or no recording) is refused, and the file is capped at 8 MiB. See [Incident bundles](/reproduce/incident-bundles) for the workflow.

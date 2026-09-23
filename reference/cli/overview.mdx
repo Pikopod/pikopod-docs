@@ -1,0 +1,86 @@
+---
+title: CLI overview
+description: Every pikopod command, grouped by what it does.
+---
+
+```text
+pikopod [command] [flags]
+```
+
+Every command accepts `--config <path>`, which defaults to `./pikopod.yaml`. `pikopod --version` prints the version, commit and date.
+
+## Exit codes
+
+`0` clean, `1` the check ran and failed, `2` pikopod or configuration error. See [Exit codes](/operations/exit-codes).
+
+## Errors
+
+Every error is one line on stderr: what failed, why, the next action, and a docs link.
+
+```text
+error: no configuration found: pikopod.yaml does not exist → run `pikopod init` to scaffold one, or pass --config → https://github.com/pikopod/pikopod/blob/main/docs/config-reference.md
+```
+
+## Commands
+
+### Setup
+
+| Command | What it does |
+|---|---|
+| [`init`](/reference/cli/init-doctor-demo) | Scaffold `pikopod.yaml`. |
+| [`doctor`](/reference/cli/init-doctor-demo) | Verify config, data dir, ports and upstreams. |
+| [`demo`](/reference/cli/init-doctor-demo) | One lap of the loop in a second, zero config. |
+| [`up`](/reference/cli/up) | Serve the agent on `:4700` and the sandbox on `:4600`. |
+
+### Gate
+
+| Command | What it does |
+|---|---|
+| [`spec-diff`](/reference/cli/spec-diff) | Diff two spec versions. Exit 1 on breaking changes. |
+| [`spec-update`](/reference/cli/spec-update) | Write a traffic-evidenced spec update. |
+| [`pr comment`, `pr open`](/reference/cli/pr) | Post findings on a pull request, or open one. |
+
+### Sandbox
+
+| Command | What it does |
+|---|---|
+| [`import`](/reference/cli/import) | Import a spec or a docs URL into a sandbox. |
+| [`sandbox add`, `list`, `reset`, `requests`, `webhooks`](/reference/cli/sandbox) | Manage sandboxes. |
+| [`chaos`](/reference/cli/chaos) | Arm a fault on a running sandbox. |
+| [`mode set`, `show`, `clear`](/reference/cli/mode) | Put a running sandbox into a scenario's standing state. |
+| [`webhook emit`, `list`](/reference/cli/webhook) | Fire a declared event; inspect deliveries. |
+| [`why`](/reference/cli/why) | Replay a request with decision tracing. |
+
+### Scenarios
+
+| Command | What it does |
+|---|---|
+| [`scenario list`, `run`, `create`, `from-drift`, `from-recordings`, `reproduce`](/reference/cli/scenario) | Bind, run and generate scenarios. |
+
+### Observe
+
+| Command | What it does |
+|---|---|
+| [`incidents`, `incidents export`](/reference/cli/incidents) | Read the event log; export a bundle. |
+| [`replay --ci`](/reference/cli/replay) | Gate builds offline on recorded traffic. |
+| [`conformance`](/reference/cli/conformance) | Does the provider obey its own spec? |
+| [`contract`](/reference/cli/contract) | The effective contract and the observed state machine. |
+| [`status`, `report`, `inspect`](/reference/cli/status-report-inspect) | Health, inventory, and stored records. |
+| [`ack`, `accept`, `baseline reset`](/reference/cli/ack-accept-baseline) | Manage alerts and baselines. |
+| [`volatile suggest`](/reference/cli/volatile) | Suggest and lint `volatile_fields`. |
+
+### Fix and agents
+
+| Command | What it does |
+|---|---|
+| [`fix`](/reference/cli/fix) | Drift to code change. |
+| [`mcp`](/reference/cli/mcp) | Serve the checks to a coding agent. |
+
+## What needs what
+
+| Needs | Commands |
+|---|---|
+| `pikopod up` running | `status`, `accept`, `chaos`, `mode`, `webhook`, `sandbox requests`, and the MCP control tools. `ack` works offline too. |
+| A model key | `scenario create`, `fix`, and `import` from a docs URL that has no spec any other way. |
+| A git repository | `pr open`, `pr comment`, `fix --pr`, and `spec-diff` with a `git:` source. |
+| No config file at all | `demo`, `spec-diff`, `pr comment`, `pr open`. |

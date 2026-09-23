@@ -1,0 +1,37 @@
+---
+title: pikopod spec-update
+description: Write a traffic-evidenced spec update. Additive patches applied in place, narrowings as suggestions.
+---
+
+```text
+pikopod spec-update <upstream> [flags]
+```
+
+Combines two evidence streams, conformance violations over recorded traffic and the traffic overlay's matured admissions, into patches against the original document. Additive changes (a new field, a new enum value, a new status) are applied in place, format-preserving. Narrowings are listed as suggestions and never applied.
+
+| Flag | Meaning |
+|---|---|
+| `--spec <file-or-url>` | The document to patch. Default: the source the sandbox was imported from. |
+| `--out <path>` | Write the patched spec here. Default: stdout. |
+| `--handoff <path>` | Write the JSON patch handoff here, for `pikopod pr comment` or `pr open`. |
+
+The report goes to stderr so the patched document can be piped from stdout:
+
+```text
+3 change(s): 2 applied (additive), 1 suggestion(s) (narrowing — never auto-applied), 0 skipped (no document anchor)
+  APPLIED    field          GET /charges/{id}  refund_reason observed in 41% of responses
+  APPLIED    status         POST /charges  422 returned 14 times
+  SUGGESTION enum           GET /charges/{id}  status value "disputed" not in documented set
+patched spec written to openapi.patched.yaml — diff it against the original before committing
+```
+
+When the spec and the wire agree: `no traffic-evidenced changes — the spec and the wire agree`, exit 0.
+
+## Carry it as a pull request
+
+```bash
+pikopod spec-update examplepay --out openapi.yaml --handoff update.json
+pikopod pr open --commit openapi.yaml --handoff update.json
+```
+
+See [Contract](/observe/contract) and [Pull requests](/reproduce/pull-requests).
