@@ -14,7 +14,7 @@ pikopod chaos examplepay --clear --method POST --path /charges
 
 | Kind | What the caller sees |
 |---|---|
-| `error` | The status you set (default 500) with an empty body and no content type. A `429` also carries `Retry-After: 30`, so a backoff assertion is reproducible. |
+| `error` | The status you set (default 500). The body is the one you armed, else the spec's declared example for that status, else empty with no content type. A `429` also carries `Retry-After: 30`, so a backoff assertion is reproducible. |
 | `rate_limit` | An `error` with status 429. |
 | `latency` | The response is delayed by `delayMs` (default 30000). |
 | `hang` | The connection is held open for `delayMs` (default 60000) with no response. |
@@ -24,6 +24,22 @@ pikopod chaos examplepay --clear --method POST --path /charges
 | `wrong_content_length` | More bytes declared than sent. The client sees an unexpected end of file mid-body. |
 
 Delays compose: a `latency` fault on top of an `error` delays the error. Every delay is capped at 60 seconds.
+
+## Error bodies
+
+A status alone proves your retry and error branches run. A client that switches on the provider's error body, a `code`, a `decline_code`, a validation list, needs the body too. An `error` fault answers with one, sourced in this order and never invented:
+
+1. **The body you armed.** `chaos --body`, `body` on an `INJECT_FAULT` step, or `body` on `arm_fault`. `headers` adds response headers the same way.
+2. **The recorded response.** `scenario reproduce` puts the incident's recorded body on the armed fault, redacted the way it reached disk.
+3. **The spec's declared example** for that exact status on that operation.
+4. **Nothing.** No content type, no body, exactly as before.
+
+```bash
+pikopod chaos examplepay --kind error --status 422 --method POST --path /charges \
+  --body '{"error":{"code":"card_declined","decline_code":"insufficient_funds"}}'
+```
+
+`--body @decline.json` reads it from a file. A body must be a JSON object or array, and only an `error` fault carries one. `x-pikopod-fault-applied` is unchanged.
 
 ## Webhook faults
 

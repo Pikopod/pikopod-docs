@@ -21,7 +21,7 @@ the failure now happens locally — fix it, then re-run: pikopod scenario run ex
 `reproduce` writes an ordinary scenario pack with three steps:
 
 1. A `NOTE` carrying the provenance: which incident, when it was first seen, and what was reconstructed.
-2. An `INJECT_FAULT` that arms the same failure on the same method and path template, once, then recovers. A 5xx becomes an `error` with that status. A 429 becomes `rate_limit`. An unreachable upstream becomes a `connection_reset`, because reproducing it as a 502 would test the wrong branch of your error handling.
+2. An `INJECT_FAULT` that arms the same failure on the same method and path template, once, then recovers. A 5xx or 4xx becomes an `error` with that status, answering with the recorded response body when the provider sent JSON. A 429 becomes `rate_limit`. An unreachable upstream becomes a `connection_reset`, because reproducing it as a 502 would test the wrong branch of your error handling.
 3. A `REQUEST` that replays the recorded request and asserts the recorded status.
 
 The pack then runs immediately against the sandbox named by the incident's upstream, or `--sandbox <name>`.
@@ -41,10 +41,10 @@ Commit the pack and it guards that path forever, with no recording needed.
 
 ## The honest limit
 
-Requests are rebuilt from **redacted** recordings. Identifiers are format-preserving tokens and anything the sanitizer could not classify was dropped before it reached disk, so the body is not byte-identical. Every generated pack says so in its note.
+Requests and responses are rebuilt from **redacted** recordings. Identifiers are format-preserving tokens and anything the sanitizer could not classify was dropped before it reached disk, so neither body is byte-identical. Error codes and spec-declared enum values survive redaction, so the armed response body still carries what your code switches on. Every generated pack says so in its note.
 
 - For a 5xx, a 429 or an unreachable upstream this changes nothing: the fault is armed on method and path, so the failure reproduces regardless.
-- For a 4xx your own payload caused, the body matters. If the pack does not reproduce the rejection, compare it against what your code actually sends.
+- For a 4xx your own payload caused, the request body matters. If the pack does not reproduce the rejection, compare it against what your code actually sends.
 
 ## Exit codes
 

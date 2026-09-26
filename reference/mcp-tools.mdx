@@ -155,6 +155,8 @@ Arm one fault. HTTP faults need `method` and `path`; webhook faults match by `ev
 | `event` | | For webhook kinds, default any |
 | `probability` | | `0..1`, default 1 |
 | `delay_ms` | | For `latency` and `delay_webhook` |
+| `body` | | JSON object an `error` fault answers with. Default: the spec's declared example for that status, else none |
+| `headers` | | Response headers an `error` fault adds |
 
 ### clear_faults
 

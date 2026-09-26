@@ -58,7 +58,7 @@ pikopod incidents --kind upstream_error --upstream examplepay --format json
 pikopod scenario reproduce fp_14835fa32dfb
 ```
 
-The incident becomes a scenario pack that arms the same failure in the sandbox and replays the recorded request at it. For a 5xx or an unreachable upstream the fault is armed on method and path, so it reproduces regardless. For a 4xx the body matters, and the body is redacted, so check the pack against what your code actually sends. When the agent runs on another host, `pikopod incidents export <fp>` writes a bundle that `reproduce` accepts anywhere. See [Reproduce](/reproduce/reproduce).
+The incident becomes a scenario pack that arms the same failure in the sandbox, answering with the recorded response body, and replays the recorded request at it. For a 5xx or an unreachable upstream the fault is armed on method and path, so it reproduces regardless. For a 4xx the request body matters, and it is redacted, so check the pack against what your code actually sends. When the agent runs on another host, `pikopod incidents export <fp>` writes a bundle that `reproduce` accepts anywhere. See [Reproduce](/reproduce/reproduce).
 
 ## In an alert
 
