@@ -18,10 +18,6 @@ npx mint validate
 npx mint broken-links
 ```
 
-## Deploy
-
-Connect this repository to Mintlify, add `docs.pikopod.com` as the custom domain, and every push to `main` deploys.
-
 ## Conventions
 
 - Every command and every block of output must come from running the real binary. Nothing is hand-written prose pretending to be output.
