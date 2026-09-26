@@ -40,9 +40,46 @@ pikopod mode clear examplepay
 
 `clear` leaves the standing state and clears every fault on the sandbox.
 
+## Verify what your tests sent
+
+A mode arms the failure. `verify` asks whether your client did what the scenario expects once it met that failure. It reads the sandbox's request journal and judges it against the scenario's verification steps: request order and spacing, webhook counts, stored state. It never arms, seeds, or resets anything.
+
+```bash
+pikopod mode set examplepay retry_storm
+```
+
+```text
+mode: retry_storm (from archetype or pack retry_storm)
+  armed   error 503 on POST /charges (first 2 per idempotency-key)
+  verify  1 step(s) with `pikopod mode verify` after your tests run
+point your app at the sandbox and run your own tests; clear it with `pikopod mode clear examplepay`
+```
+
+Run your tests. `retry_storm` refuses the first two creates under one idempotency key with `503` and answers the third, so a client that retries correctly sends three. Then:
+
+```bash
+pikopod mode verify examplepay
+```
+
+```text
+✓ retry_storm — PASSED (3 assertion(s) passed; 0 not evaluated)
+    PASSED         storm-shape      3 matcher(s) matched in order
+```
+
+A client that gave up after the second `503` fails, and the summary says which expectation the journal never met:
+
+```text
+✗ retry_storm — FAILED (matcher 2 (POST /charges) never matched; scanned 2 of 2 journaled request(s))
+    FAILED         storm-shape      matcher 2 (POST /charges) never matched; scanned 2 of 2 journaled request(s)
+
+your client did not do what the scenario expects — exit 1
+```
+
+Exit `0` when every step passed, `1` when the client fell short, `2` when no mode is set or the mode's scenario has no verification step. Spacing between requests is judged on wall-clock time, because your client made them in real time. Clear the mode between suites, or the next suite is judged against the last one's requests too.
+
 ## From a coding agent
 
-The same three operations are MCP tools: `set_mode`, `clear_mode`, and `get_requests` to see what the code under test actually sent. See [MCP tools](/reference/mcp-tools).
+The same operations are MCP tools: `set_mode`, `mode_verify`, `clear_mode`, and `get_requests` to read the journal itself. See [MCP tools](/reference/mcp-tools).
 
 ## When you want one fault, not a story
 

@@ -37,4 +37,34 @@ pikopod mode clear <sandbox>
 
 Leaves the standing state and clears every fault on the sandbox.
 
+## mode verify
+
+```text
+pikopod mode verify <sandbox>
+```
+
+After your own tests ran against the sandbox in a mode, checks what they sent against the scenario's verification steps. It reads the request journal and never arms, seeds, or resets anything.
+
+```text
+✓ retry_storm — PASSED (3 assertion(s) passed; 0 not evaluated)
+    PASSED         storm-shape      3 matcher(s) matched in order
+```
+
+```text
+✗ retry_storm — FAILED (matcher 2 (POST /charges) never matched; scanned 2 of 2 journaled request(s))
+    FAILED         storm-shape      matcher 2 (POST /charges) never matched; scanned 2 of 2 journaled request(s)
+
+your client did not do what the scenario expects — exit 1
+```
+
+| Exit | Meaning |
+|---|---|
+| `0` | Every verification step passed. |
+| `1` | The client did not do what the scenario expects. |
+| `2` | No mode is set, the mode's scenario has no verification step, or a step could not run. |
+
+```text
+error: no mode set on examplepay: nothing is armed, so there is nothing to verify against → enter one with `pikopod mode set examplepay <scenario>`, run your tests, then verify → https://github.com/pikopod/pikopod/blob/main/scenarios/README.md
+```
+
 See [Modes](/sandbox/modes).

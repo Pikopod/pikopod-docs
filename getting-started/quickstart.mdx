@@ -97,7 +97,7 @@ pikopod scenario run examplepay declines retry_storm
 
 Runs are ephemeral by default: each one drives its own requests at a throwaway copy of the sandbox, so nothing you serve is touched. Exit `0` when everything passes, `1` when an assertion fails, `2` on a tool error. See [Running scenarios](/scenarios/running).
 
-## 6. Serve it and make your own tests meet the failure
+## 6. Serve it and prove your own code survives the failure
 
 ```bash
 pikopod up
@@ -116,17 +116,45 @@ Two listeners start, and which one you point at depends on what you are pointing
 | Your tests, Postman, or a staging app that should meet failures | `http://127.0.0.1:4600/examplepay` (the sandbox) | The test credential printed at import | pikopod answers from the spec, and fails when you tell it to |
 | Your real app, in staging or production | `http://127.0.0.1:4700/examplepay` (the agent) | Your real provider credentials, unchanged | pikopod forwards to the real provider untouched and observes |
 
-For this step, point your tests at the sandbox. Then, in another terminal, put it into a scenario's standing state so your own tests, Postman, or plain curl meet the failure:
+For this step, point your tests at the sandbox. Then, in another terminal, put it into a scenario's standing state so your own tests, or plain curl, meet the failure:
 
 ```bash
-pikopod mode set examplepay timeouts
+pikopod mode set examplepay retry_storm
 ```
 
 ```text
-mode: timeouts (from archetype or pack timeouts)
-  armed   latency on GET /charges
+mode: retry_storm (from archetype or pack retry_storm)
+  armed   error 503 on POST /charges (first 2 per idempotency-key)
+  verify  1 step(s) with `pikopod mode verify` after your tests run
 point your app at the sandbox and run your own tests; clear it with `pikopod mode clear examplepay`
 ```
+
+Now run your tests. Standing in for them here, one create sent three times under one idempotency key, the way a client with retries would:
+
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' -X POST http://127.0.0.1:4600/examplepay/charges \
+  -H "Authorization: Bearer <test credential>" -H 'Content-Type: application/json' \
+  -H 'Idempotency-Key: order-77' -d '{"amount":5000,"currency":"usd"}'
+```
+
+```text
+503
+503
+201
+```
+
+Then ask whether your client did what the story expects:
+
+```bash
+pikopod mode verify examplepay
+```
+
+```text
+✓ retry_storm — PASSED (3 assertion(s) passed; 0 not evaluated)
+    PASSED         storm-shape      3 matcher(s) matched in order
+```
+
+A client that gave up after the second `503` gets `FAILED` and exit `1`, with the expectation the journal never met, so `verify` can sit in CI right after your test suite. It only reads what the sandbox journaled; it never arms, seeds, or resets anything.
 
 Or arm one fault directly:
 
@@ -227,6 +255,7 @@ Replay runs offline against recorded traffic and frozen baselines. See [Replay g
 - `scenario list` bound eleven provider-agnostic archetypes to the operations the spec declares, refusing the one it could not ground.
 - `scenario run` expanded two archetypes into concrete steps and ran them against an ephemeral engine.
 - `up` started two listeners in one process: the sandbox on `:4600` and the observing agent on `:4700`.
+- `mode set` armed one story's failure on the served sandbox, and `mode verify` judged what your client sent against that story's expectations.
 - `spec-diff` normalized two spec versions and derived a severity for every change by one fixed rule.
 - `incidents` read the event log, and `reproduce` turned one event plus its redacted recording into a runnable pack.
 

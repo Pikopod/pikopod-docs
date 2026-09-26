@@ -56,6 +56,7 @@ The readers are the checks an agent cannot make by reading files.
 | `reproduce` | A recorded incident turned into a pack and run locally. |
 | `scenario_list`, `scenario_run` | Which archetypes bind to a sandbox, with the reason when one does not, and the verdict of running them against a throwaway copy. |
 | `get_requests` | What the caller's own code actually sent to the running sandbox. |
+| `mode_verify` | Whether what the caller's own code sent is what the standing scenario expects. The one check that judges the caller's code, not the sandbox. |
 
 The controls put a **running** sandbox (`pikopod up`) into a state the caller's own tests then meet. They act on a local fake and never on a provider: `set_mode`, `clear_mode`, `arm_fault`, `clear_faults`, `emit_webhook`.
 
@@ -72,8 +73,8 @@ The full argument schemas and verdict rules per tool are in the [MCP tools refer
   <Step title="Put the sandbox into the failure the code must survive">
     `set_mode` with `name: "retry_storm"` on the running sandbox, then run the project's own tests against `http://127.0.0.1:4600/<sandbox>`.
   </Step>
-  <Step title="Confirm what the code actually sent">
-    `get_requests` returns the sandbox's request journal. A retry claim is provable here, because the journal records order and headers with identifiers tokenized.
+  <Step title="Confirm the code did what the scenario expects">
+    `mode_verify` judges the sandbox's request journal against the scenario's verification steps: `CLEAN` when the client retried the way `retry_storm` expects, `FINDINGS` when it gave up early. `get_requests` returns the journal itself when the agent needs to see the requests, with identifiers tokenized.
   </Step>
   <Step title="Ask whether production disagrees">
     `drift_events` and `conformance` on the upstream. If the answer is `UNVERIFIABLE` because warmup is incomplete, the agent knows exactly how many samples it has and how many the gate needs.

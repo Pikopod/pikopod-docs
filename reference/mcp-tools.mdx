@@ -108,6 +108,16 @@ What the caller's application actually sent to a running sandbox: the request jo
 
 Needs `pikopod up`. When older entries were evicted the result says so, because ordering claims across the gap cannot be proven.
 
+### mode_verify
+
+After the caller's own tests ran against a running sandbox in a mode, check what they sent against the scenario's verification steps: request order and spacing, webhook counts, stored state. This is the one tool that judges the caller's code rather than the sandbox.
+
+| Argument | Required | Meaning |
+|---|---|---|
+| `sandbox` | yes | Sandbox name |
+
+`CLEAN` when every step passed, `FINDINGS` when the client did not do what the scenario expects, `ERROR` when no mode is set or a step could not run. `data.result` carries the run result, `data.mode` the scenario's name. Needs `pikopod up` and a standing `set_mode`.
+
 ## Controls over the running sandbox
 
 These need `pikopod up` and act on a local fake, never on a provider.
