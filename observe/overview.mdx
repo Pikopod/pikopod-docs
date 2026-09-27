@@ -28,8 +28,8 @@ Two different things, on two different clocks.
 Both produce an event with a stable fingerprint, and the fingerprint is the handle you feed back in:
 
 ```bash
-pikopod incidents                                  # what has failed, newest first
-pikopod scenario reproduce fp_14835fa32dfb         # an incident becomes a local test
+pikopod agent incidents                                  # what has failed, newest first
+pikopod reproduce fp_14835fa32dfb         # an incident becomes a local test
 pikopod scenario from-drift fp_385153d1776c        # a shape change becomes a pinned test
 ```
 
@@ -64,4 +64,4 @@ A spec-diff tool reads what the provider published. Monitoring sees your traffic
 | [Contract](/observe/contract) | The traffic overlay and conformance. |
 | [State machine](/observe/state-machine) | The transitions a provider actually makes. |
 | [Replay gate](/observe/replay-gate) | Gating builds offline on recorded traffic. |
-| [Inspecting](/observe/inspecting) | `status`, `report` and `inspect`. |
+| [Inspecting](/observe/inspecting) | `agent status`, `agent report` and `agent inspect`. |

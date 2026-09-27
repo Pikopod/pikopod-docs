@@ -30,7 +30,7 @@ Delays compose: a `latency` fault on top of an `error` delays the error. Every d
 A status alone proves your retry and error branches run. A client that switches on the provider's error body, a `code`, a `decline_code`, a validation list, needs the body too. An `error` fault answers with one, sourced in this order and never invented:
 
 1. **The body you armed.** `chaos --body`, `body` on an `INJECT_FAULT` step, or `body` on `arm_fault`. `headers` adds response headers the same way.
-2. **The recorded response.** `scenario reproduce` puts the incident's recorded body on the armed fault, redacted the way it reached disk.
+2. **The recorded response.** `reproduce` puts the incident's recorded body on the armed fault, redacted the way it reached disk.
 3. **The spec's declared example** for that exact status on that operation.
 4. **Nothing.** No content type, no body, exactly as before.
 

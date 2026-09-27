@@ -6,7 +6,7 @@ description: status, report and inspect. What the agent has seen, learned, and w
 ## status
 
 ```bash
-pikopod status
+pikopod agent status
 ```
 
 Reads `/healthz` from the running agent and prints it as JSON: requests proxied, upstream errors, recordings written and dropped, observer panics, events emitted, alert delivery health, the number of tracked fingerprints, and every baseline family with its sample count and whether it is warmed up. With a spec watcher armed, a `spec_watch` block reports each source's last check and last error. Needs `pikopod up`. See [Control plane](/reference/control-plane#health) for the fields.
@@ -14,7 +14,7 @@ Reads `/healthz` from the running agent and prints it as JSON: requests proxied,
 ## report
 
 ```bash
-pikopod report
+pikopod agent report
 ```
 
 The endpoint inventory from the baselines on disk: what your app actually calls, by method and template, with the status class, sample count, field count, and whether the baseline is frozen or still warming up. Worth reading after about 48 hours. Works offline.
@@ -28,9 +28,9 @@ examplepay — endpoint inventory (what your app ACTUALLY calls)
 ## inspect
 
 ```bash
-pikopod inspect
-pikopod inspect --last 20 --format curl
-pikopod inspect --format har > recordings.har
+pikopod agent inspect
+pikopod agent inspect --last 20 --format curl
+pikopod agent inspect --format har > recordings.har
 ```
 
 Prints stored records with tokenized fields visible, so you can confirm what was kept before you trust it. `--last` sets how many records per upstream (default 5). Formats:
@@ -41,12 +41,12 @@ Prints stored records with tokenized fields visible, so you can confirm what was
 | `curl` | One `curl` command per record, with the sanitized headers and body, safe to share. |
 | `har` | One HAR 1.2 document across the selected records. |
 
-Everything `inspect` prints is post-sanitizer: tokens and placeholders, never raw traffic. See [Redaction](/observe/redaction).
+Everything `agent inspect` prints is post-sanitizer: tokens and placeholders, never raw traffic. See [Redaction](/observe/redaction).
 
 ## The event log
 
 ```bash
-pikopod incidents --format json --limit 200
+pikopod agent incidents --format json --limit 200
 ```
 
-The reader for `<data_dir>/events.ndjson`. See [Incidents](/observe/incidents) and [`pikopod incidents`](/reference/cli/incidents).
+The reader for `<data_dir>/events.ndjson`. See [Incidents](/observe/incidents) and [`pikopod agent incidents`](/reference/cli/incidents).

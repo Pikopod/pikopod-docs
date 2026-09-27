@@ -3,7 +3,7 @@ title: Drift event schema
 description: The one shape pikopod emits for a drift or an incident, to stdout, to Slack, and to the event log.
 ---
 
-The schema is published at `schema/drift-event.schema.json` in the repository. This is what `pikopod incidents --format json` returns per event, what lands in `<data_dir>/events.ndjson` one object per line, and what an alert carries.
+The schema is published at `schema/drift-event.schema.json` in the repository. This is what `pikopod agent incidents --format json` returns per event, what lands in `<data_dir>/events.ndjson` one object per line, and what an alert carries.
 
 ```json
 {
@@ -75,4 +75,4 @@ Consumers must ignore unknown fields, and must ignore kinds they do not recognis
 
 ## Reading the log
 
-`pikopod incidents --format json` returns `{"schema_version", "total_matching", "truncated", "events"}`. `total_matching` and `truncated` are always present, so a shortened list can never be mistaken for a clean one. Events are sorted newest first by `last_seen`, and the log keeps the latest state per fingerprint.
+`pikopod agent incidents --format json` returns `{"schema_version", "total_matching", "truncated", "events"}`. `total_matching` and `truncated` are always present, so a shortened list can never be mistaken for a clean one. Events are sorted newest first by `last_seen`, and the log keeps the latest state per fingerprint.

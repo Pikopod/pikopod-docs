@@ -18,14 +18,14 @@ comment created (source spec-diff, github)
 
 One marker-tagged comment per finding source, updated in place on re-runs rather than a new comment per run. The comment carries the head SHA, so a stale comment is visible as such.
 
-Handoffs come from `spec-diff`, `replay --ci`, `conformance` and `spec-update`.
+Handoffs come from `spec-diff`, `agent replay --ci`, `agent conformance` and `agent spec-update`.
 
 If the token cannot comment, as with a read-only token on a pull request from a fork, `pr comment` writes the report to the job summary instead, or to stdout, and exits `0` with a note on stderr.
 
 ## Open a pull request
 
 ```bash
-pikopod spec-update examplepay --out openapi.yaml --handoff update.json
+pikopod agent spec-update examplepay --out openapi.yaml --handoff update.json
 pikopod pr open --commit openapi.yaml --handoff update.json --title "examplepay: adopt observed fields"
 ```
 

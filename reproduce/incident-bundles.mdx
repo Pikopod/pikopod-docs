@@ -8,21 +8,21 @@ The agent's `data_dir` lives on the host that runs it. A developer's laptop does
 ## Export
 
 ```bash
-pikopod incidents export fp_14835fa32dfb > incident.json
+pikopod agent incidents export fp_14835fa32dfb > incident.json
 ```
 
-Every incident row printed by `pikopod incidents` carries the exact line to run. For everything in a window, as a JSON array:
+Every incident row printed by `pikopod agent incidents` carries the exact line to run. For everything in a window, as a JSON array:
 
 ```bash
-pikopod incidents export --since 24h > incidents.json
+pikopod agent incidents export --since 24h > incidents.json
 ```
 
-The bundle carries no salt, no token and no configuration. The recording inside it is the redacted one, so it is as safe to attach to an issue as anything `pikopod inspect` prints.
+The bundle carries no salt, no token and no configuration. The recording inside it is the redacted one, so it is as safe to attach to an issue as anything `pikopod agent inspect` prints.
 
 ## Reproduce and fix from it
 
 ```bash
-pikopod scenario reproduce ./incident.json
+pikopod reproduce ./incident.json
 pikopod fix ./incident.json --check "go build ./..."
 ```
 

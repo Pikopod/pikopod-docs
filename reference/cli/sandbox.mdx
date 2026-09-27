@@ -1,6 +1,6 @@
 ---
 title: pikopod sandbox
-description: Add, list, reset, and inspect sandboxes, and attach webhook envelopes.
+description: Add, list, and reset sandboxes, and attach webhook envelopes.
 ---
 
 ## sandbox add
@@ -35,19 +35,7 @@ Clears the sandbox's stored resources. The seed is unchanged, so the same seed r
 
 ## sandbox requests
 
-```text
-pikopod sandbox requests <name> [--last 50] [--reset]
-```
-
-The request journal of a **running** sandbox: what your code actually sent, newest last.
-
-```text
-#1    POST   /charges                                 → 201
-#2    GET    /charges/ch_a91f3c                       → 200  (/charges/{id})
-2 request(s)
-```
-
-When the bounded journal has evicted older entries, the footer says how many, because ordering claims across the gap cannot be proven. `--reset` clears the journal. See [Request journal](/sandbox/request-journal).
+Moved to [`pikopod requests`](/reference/cli/requests). `pikopod sandbox requests <name>` still works this release and prints one line on stderr naming the new spelling.
 
 ## sandbox webhooks
 

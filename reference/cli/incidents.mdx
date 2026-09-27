@@ -1,10 +1,10 @@
 ---
-title: pikopod incidents
+title: pikopod agent incidents
 description: List recorded incidents and drift events, and export a bundle.
 ---
 
 ```text
-pikopod incidents [flags]
+pikopod agent incidents [flags]
 ```
 
 A reader, not a gate: exits `0` whether or not it found anything, and `2` only when the event log cannot be read.
@@ -24,8 +24,8 @@ A reader, not a gate: exits `0` whether or not it found anything, and `2` only w
 [] incident upstream_error         POST /charges (examplepay) · 4 occurrence(s) · last 2026-09-19T10:00:00Z
   fp_14835fa32dfb
   reproducible until 2026-09-26T10:00:00Z
-  reproduce: pikopod scenario reproduce fp_14835fa32dfb
-  export: pikopod incidents export fp_14835fa32dfb
+  reproduce: pikopod reproduce fp_14835fa32dfb
+  export: pikopod agent incidents export fp_14835fa32dfb
 ```
 
 Newest first by last seen. `reproducible until` appears on incidents when retention is configured.
@@ -46,7 +46,7 @@ Newest first by last seen. `reproducible until` appears on incidents when retent
 ## incidents export
 
 ```text
-pikopod incidents export [fingerprint] [--since <duration>]
+pikopod agent incidents export [fingerprint] [--since <duration>]
 ```
 
 Writes a self-contained bundle to stdout: the event, the already-redacted recording and the contract version. No salt, no token, no configuration. One fingerprint writes one bundle; `--since` writes a JSON array of every incident in the window. See [Incident bundles](/reproduce/incident-bundles) and the [bundle format](/reference/incident-bundle).

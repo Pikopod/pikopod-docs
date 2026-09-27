@@ -41,7 +41,7 @@ A curated list of names that churn by convention is always applied on top of you
 ## Let the tool suggest them
 
 ```bash
-pikopod volatile suggest examplepay
+pikopod agent volatile suggest examplepay
 ```
 
 ```text
@@ -57,7 +57,7 @@ A field is suggested only when it is proven to churn: at least ten observations,
 
 ## Collateral
 
-`pikopod up` and `volatile suggest` both lint the configured entries against what has been learned:
+`pikopod up` and `agent volatile suggest` both lint the configured entries against what has been learned:
 
 | Verdict | Meaning |
 |---|---|
@@ -69,4 +69,4 @@ A field is suggested only when it is proven to churn: at least ten observations,
 volatile_fields examplepay: DEAD_ENTRY request_ref (matches no field the agent has learned; you believe a field is excluded while nothing is)
 ```
 
-Remove or fix what it names. See [`pikopod volatile`](/reference/cli/volatile).
+Remove or fix what it names. See [`pikopod agent volatile`](/reference/cli/volatile).

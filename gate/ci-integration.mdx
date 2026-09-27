@@ -84,7 +84,7 @@ Treat `1` and `2` differently. `1` means the provider changed something that bre
 Once an agent has been observing a provider, add the offline replay gate to the same job. It needs the `data_dir` (or a copy of it) and no network:
 
 ```bash
-./pikopod replay --ci --handoff replay.json
+./pikopod agent replay --ci --handoff replay.json
 ```
 
 See [Replay gate](/observe/replay-gate).

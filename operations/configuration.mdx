@@ -123,7 +123,7 @@ retention:
 
 Ages recordings and the event log out of disk. A record is kept at least that long and deleted no later than roughly twice that age. `0` (default) keeps size-based rotation only.
 
-`scenario from-drift` and `scenario reproduce` read the event log, so fingerprints older than the window can no longer be pinned. Every incident row therefore carries `reproducible until <time>` and an `export:` hint. See [Incident bundles](/reproduce/incident-bundles).
+`scenario from-drift` and `reproduce` read the event log, so fingerprints older than the window can no longer be pinned. Every incident row therefore carries `reproducible until <time>` and an `export:` hint. See [Incident bundles](/reproduce/incident-bundles).
 
 ## slack
 
@@ -137,7 +137,7 @@ slack:
 | Key | Meaning |
 |---|---|
 | `webhook_url` | A plain incoming webhook. |
-| `min_level` | Delivery floor: `INFO` (default, deliver everything), `WARN`, or `ERR`. It floors the channel, not the record: muted alerts still appear in the local event log, in `pikopod status`, and in the digest. |
+| `min_level` | Delivery floor: `INFO` (default, deliver everything), `WARN`, or `ERR`. It floors the channel, not the record: muted alerts still appear in the local event log, in `pikopod agent status`, and in the digest. |
 | `digest_hours` | Periodic digest of new findings by severity. `0` disables it. |
 
 Alert behaviour itself is a fixed contract, not a set of keys. See [Alerts](/observe/alerts).
@@ -169,7 +169,7 @@ refine:
   prefer_spec: false
 ```
 
-Off by default. When enabled, observed traffic accumulates an overlay beside the spec-derived contract, and matured observations join the effective contract. `prefer_spec` flips type-conflict precedence back to spec-wins; the default is traffic-wins once the sustain gates clear. Inspect the result with `pikopod contract <sandbox>`. See [Contract](/observe/contract).
+Off by default. When enabled, observed traffic accumulates an overlay beside the spec-derived contract, and matured observations join the effective contract. `prefer_spec` flips type-conflict precedence back to spec-wins; the default is traffic-wins once the sustain gates clear. Inspect the result with `pikopod agent contract <sandbox>`. See [Contract](/observe/contract).
 
 ## behaviour
 

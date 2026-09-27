@@ -32,7 +32,7 @@ The sanitizer is respected: a field whose value never reached disk still teaches
 ## Reading it
 
 ```bash
-pikopod contract examplepay
+pikopod agent contract examplepay
 ```
 
 ```text
@@ -60,8 +60,8 @@ Pinned scenarios come from `from-drift` and `reproduce`: a pack carries `contrac
 Drift is baseline-relative. Conformance is spec-relative: does the provider obey its own documentation?
 
 ```bash
-pikopod conformance examplepay
-pikopod conformance examplepay --strict      # exit 1 on error-severity violations
+pikopod agent conformance examplepay
+pikopod agent conformance examplepay --strict      # exit 1 on error-severity violations
 ```
 
 ```text
@@ -71,7 +71,7 @@ examplepay — 37 JSON response(s) checked against the spec (2 skipped: non-JSON
 1 violation(s) — the provider disagrees with its own documentation:
   error   enum      GET /charges/{id} 200  /status                 value "disputed" not in documented set [pending, succeeded, failed] (4 occurrence(s))
 
-these are SPEC-relative findings; `pikopod contract` shows what traffic has taught the sandbox instead
+these are SPEC-relative findings; `pikopod agent contract` shows what traffic has taught the sandbox instead
 ```
 
 | Code | Meaning | Severity |
@@ -89,7 +89,7 @@ A check whose evidence the sanitizer redacted is counted as unverifiable and nev
 Both signals can become a patch to the original document:
 
 ```bash
-pikopod spec-update examplepay --out openapi.patched.yaml --handoff update.json
+pikopod agent spec-update examplepay --out openapi.patched.yaml --handoff update.json
 ```
 
-Additive changes (a new field, a new enum value, a new status) are applied in place, format-preserving. Narrowings are listed as suggestions and never applied. See [`pikopod spec-update`](/reference/cli/spec-update).
+Additive changes (a new field, a new enum value, a new status) are applied in place, format-preserving. Narrowings are listed as suggestions and never applied. See [`pikopod agent spec-update`](/reference/cli/spec-update).

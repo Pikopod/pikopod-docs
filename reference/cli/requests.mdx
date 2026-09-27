@@ -1,0 +1,74 @@
+---
+title: pikopod requests
+description: What a running sandbox received, and why it answered the way it did.
+---
+
+```text
+pikopod requests <sandbox> [--last 50] [--reset]
+pikopod requests <sandbox> --explain <METHOD> <path> [--body <json>] [--auth=false]
+```
+
+## The journal
+
+The request journal of a **running** sandbox: what your code actually sent, newest last.
+
+```text
+#1    POST   /charges                                 → 201
+#2    GET    /charges/ch_a91f3c                       → 200  (/charges/{id})
+2 request(s)
+```
+
+When the bounded journal has evicted older entries, the footer says how many, because ordering claims across the gap cannot be proven. `--reset` clears the journal. See [Request journal](/sandbox/request-journal).
+
+## --explain
+
+Replays one request in-process against an ephemeral fork of the sandbox's current state, with the narrator on. No real state is touched and no server is needed. Deterministic replay means the trace is the truth, not an approximation.
+
+| Flag | Meaning |
+|---|---|
+| `--body <json>` | A JSON request body. |
+| `--auth` | Send the sandbox's issued credential. Default true. Pass `--auth=false` to see the refusal path. |
+
+```bash
+pikopod requests examplepay --explain POST /charges --body '{"amount": 1250, "currency": "NGN"}'
+```
+
+```text
+replaying POST /charges against a fork of examplepay (seed 1f41d4ff6d02c840) — no real state is touched
+
+  auth       sending the issued credential in authorization
+  faults     no armed fault fired
+  route      matched createCharge
+  auth       declared auth satisfied
+  operation  kind=create resource=/charges
+
+→ 201
+  Content-Type: application/json; charset=utf-8
+  Etag: "0"
+  X-Pikopod-Operation: createCharge
+
+{"amount":1250,"currency":"NGN","id":"charges_1","status":"failed"}
+```
+
+```bash
+pikopod requests examplepay --explain GET /charges --auth=false
+```
+
+```text
+  faults     no armed fault fired
+  route      matched listCharges
+  auth       declared auth REFUSED the request (401) — the issued credential is in `pikopod sandbox list`
+
+→ 401
+  Content-Type: application/json; charset=utf-8
+  Www-Authenticate: Bearer
+  X-Pikopod-Operation: listCharges
+
+{"message":"Authentication required"}
+```
+
+The path must be provider-relative and start with `/`. Bodies longer than 2000 characters are truncated in the output.
+
+## Old spellings
+
+`pikopod sandbox requests <sandbox>` and `pikopod why <sandbox> <METHOD> <path>` still work this release. Each prints one line on stderr naming the spelling above.

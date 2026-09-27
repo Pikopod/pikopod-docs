@@ -1,6 +1,6 @@
 ---
 title: Incident bundle
-description: The self-contained file pikopod incidents export writes, and what reproduce and fix accept.
+description: The self-contained file pikopod agent incidents export writes, and what reproduce and fix accept.
 ---
 
 A bundle carries one incident from the host that recorded it to any machine that will reproduce or fix it. It holds the event, the already-redacted recording and the contract version, and nothing else: no salt, no token, no configuration.
@@ -30,8 +30,8 @@ A bundle carries one incident from the host that recorded it to any machine that
 ## Producing one
 
 ```bash
-pikopod incidents export fp_14835fa32dfb > incident.json
-pikopod incidents export --since 24h > incidents.json
+pikopod agent incidents export fp_14835fa32dfb > incident.json
+pikopod agent incidents export --since 24h > incidents.json
 ```
 
 The first writes one bundle. The second writes a JSON array of every incident last seen in the window.
@@ -39,7 +39,7 @@ The first writes one bundle. The second writes a JSON array of every incident la
 ## Consuming one
 
 ```bash
-pikopod scenario reproduce ./incident.json
+pikopod reproduce ./incident.json
 pikopod fix ./incident.json --check "go build ./..."
 ```
 

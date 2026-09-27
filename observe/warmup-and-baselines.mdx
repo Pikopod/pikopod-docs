@@ -32,17 +32,17 @@ The live statistics keep accumulating after the freeze, but drift is diffed agai
 ## Checking progress
 
 ```bash
-pikopod status
+pikopod agent status
 ```
 
-`status` reads `/healthz` and lists every family with its sample count and whether it is warmed up. `pikopod report` prints the endpoint inventory from the baselines on disk, which is worth reading after about 48 hours: it is what your app actually calls. See [Inspecting](/observe/inspecting).
+`agent status` reads `/healthz` and lists every family with its sample count and whether it is warmed up. `pikopod agent report` prints the endpoint inventory from the baselines on disk, which is worth reading after about 48 hours: it is what your app actually calls. See [Inspecting](/observe/inspecting).
 
 ## Resetting and refreezing
 
 | Command | Effect |
 |---|---|
-| `pikopod baseline reset <upstream>` | Delete the upstream's baselines. Warmup restarts on the next traffic. |
-| `pikopod accept <fingerprint>` | Refreeze the affected endpoint from live traffic and acknowledge the alert. The drifted behaviour becomes the baseline. |
+| `pikopod agent baseline reset <upstream>` | Delete the upstream's baselines. Warmup restarts on the next traffic. |
+| `pikopod agent accept <fingerprint>` | Refreeze the affected endpoint from live traffic and acknowledge the alert. The drifted behaviour becomes the baseline. |
 
 Baselines live in `<data_dir>/baselines/<upstream>.json` and are single-writer. Run one agent per `data_dir`. See [Deployment](/operations/deployment).
 

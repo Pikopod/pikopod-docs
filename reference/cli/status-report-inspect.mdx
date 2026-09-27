@@ -1,12 +1,12 @@
 ---
-title: pikopod status, report, inspect
+title: pikopod agent status, report, inspect
 description: Health of the running agent, the endpoint inventory, and stored records with tokens visible.
 ---
 
 ## status
 
 ```text
-pikopod status
+pikopod agent status
 ```
 
 Reads `/healthz` from the running agent and prints the JSON payload: traffic counters, recordings written and dropped, observer panics, alert delivery health, tracked fingerprints, every baseline family with its warmup state, and the spec watcher's health when armed. Needs `pikopod up`. Fields are listed under [Control plane](/reference/control-plane#health).
@@ -14,7 +14,7 @@ Reads `/healthz` from the running agent and prints the JSON payload: traffic cou
 ## report
 
 ```text
-pikopod report
+pikopod agent report
 ```
 
 The endpoint inventory learned from traffic, from the baselines on disk. Works offline.
@@ -30,7 +30,7 @@ Exits `2` with a pointer to `pikopod up` when no baselines exist yet.
 ## inspect
 
 ```text
-pikopod inspect [--last 5] [--format json|curl|har]
+pikopod agent inspect [--last 5] [--format json|curl|har]
 ```
 
 Stored records per upstream, newest first, with tokenized fields visible so you can verify redaction yourself.

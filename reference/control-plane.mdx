@@ -119,7 +119,7 @@ With a token set and no header it answers `200 {"status":"ok"}` only, so a load 
 | `POST` | `/ack?fp=<fingerprint>` | `{"acked":"<fp>"}` |
 | `POST` | `/accept?fp=<fingerprint>` | `{"accepted":"<fp>","refrozen_families":n}` |
 
-`ack` silences a fingerprint until its diff changes. `accept` refreezes the endpoint's baseline from live traffic and acknowledges, so the drifted behaviour becomes the new normal. Unknown fingerprints answer `404`. See [Alerts](/observe/alerts).
+`agent ack` silences a fingerprint until its diff changes. `agent accept` refreezes the endpoint's baseline from live traffic and acknowledges, so the drifted behaviour becomes the new normal. Unknown fingerprints answer `404`. See [Alerts](/observe/alerts).
 
 ## Headers the agent handles
 

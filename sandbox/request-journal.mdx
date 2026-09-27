@@ -6,7 +6,7 @@ description: What your code actually sent to the sandbox, as opposed to what it 
 A running sandbox keeps a journal of every request it received: sequence number, method, path, matched template, status, and the redacted headers, query and body.
 
 ```bash
-pikopod sandbox requests examplepay
+pikopod requests examplepay
 ```
 
 ```text
@@ -34,7 +34,7 @@ The journal holds the newest 1024 entries, 64 headers and 64 query values per en
 1024 request(s) — 37 older entries EVICTED (upper-bound verifications fail closed)
 ```
 
-Clear it with `pikopod sandbox requests examplepay --reset`.
+Clear it with `pikopod requests examplepay --reset`.
 
 ## In scenarios
 

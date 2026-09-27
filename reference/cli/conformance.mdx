@@ -1,10 +1,10 @@
 ---
-title: pikopod conformance
+title: pikopod agent conformance
 description: Validate recorded traffic against the spec. Does the provider obey its own documentation?
 ---
 
 ```text
-pikopod conformance <upstream> [--strict] [--handoff <path>]
+pikopod agent conformance <upstream> [--strict] [--handoff <path>]
 ```
 
 Needs an imported spec for the upstream (a sandbox with the same name, or linked with `--upstream`) and recordings. Drift is baseline-relative; conformance is spec-relative.
@@ -21,7 +21,7 @@ examplepay — 37 JSON response(s) checked against the spec (2 skipped: non-JSON
 1 violation(s) — the provider disagrees with its own documentation:
   error   enum      GET /charges/{id} 200  /status                 value "disputed" not in documented set [pending, succeeded, failed] (4 occurrence(s))
 
-these are SPEC-relative findings; `pikopod contract` shows what traffic has taught the sandbox instead
+these are SPEC-relative findings; `pikopod agent contract` shows what traffic has taught the sandbox instead
 ```
 
 Without `--strict` the command exits `0` regardless of violations. Checks whose evidence the sanitizer redacted are never scored as passes. See [Contract](/observe/contract#conformance).

@@ -25,7 +25,7 @@ slack:
   digest_hours: 24
 ```
 
-`min_level` floors the channel, not the record. Muted alerts still appear in the event log, in `pikopod status`, and in the digest. `digest_hours` posts a periodic summary of new findings by severity and source; `0` disables it.
+`min_level` floors the channel, not the record. Muted alerts still appear in the event log, in `pikopod agent status`, and in the digest. `digest_hours` posts a periodic summary of new findings by severity and source; `0` disables it.
 
 Delivery is asynchronous behind a 256-message queue so a slow webhook never touches the data plane. `/healthz` reports `last_delivery_ok`, `last_delivery_err` and `deliveries_dropped`.
 
@@ -53,16 +53,16 @@ Every alert carries finding structure and field paths only. Values are the redac
 
 | Command | What it does | Needs `pikopod up`? |
 |---|---|---|
-| `pikopod ack <fp>` | Silences the fingerprint until its diff changes. The baseline is untouched. | No. Offline it edits the persisted state, applied on the next start. |
-| `pikopod accept <fp>` | Refreezes the affected endpoint's baseline from live traffic, then acknowledges. The drifted behaviour is the baseline now; findings for it stop entirely. | Yes. |
+| `pikopod agent ack <fp>` | Silences the fingerprint until its diff changes. The baseline is untouched. | No. Offline it edits the persisted state, applied on the next start. |
+| `pikopod agent accept <fp>` | Refreezes the affected endpoint's baseline from live traffic, then acknowledges. The drifted behaviour is the baseline now; findings for it stop entirely. | Yes. |
 
 ```bash
-pikopod ack fp_6d540d187d44
-pikopod accept fp_6d540d187d44
+pikopod agent ack fp_6d540d187d44
+pikopod agent accept fp_6d540d187d44
 ```
 
 Both are also available over HTTP on the agent as `POST /ack?fp=` and `POST /accept?fp=`. See [Control plane](/reference/control-plane#acknowledge-and-accept).
 
 ## The event log
 
-Every event, delivered or not, is appended to `<data_dir>/events.ndjson` in the [drift event schema](/reference/drift-event-schema). `pikopod incidents` reads it. The log rotates by size and by `retention.max_age_hours`; acknowledgement state is never aged.
+Every event, delivered or not, is appended to `<data_dir>/events.ndjson` in the [drift event schema](/reference/drift-event-schema). `pikopod agent incidents` reads it. The log rotates by size and by `retention.max_age_hours`; acknowledgement state is never aged.

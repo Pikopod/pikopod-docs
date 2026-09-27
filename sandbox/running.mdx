@@ -28,7 +28,7 @@ curl -H 'Authorization: Bearer pikopod_sbx_test_…' \
 
 ## The control plane
 
-Under `/_pikopod/sandboxes/<name>/` the sandbox listener serves faults, the request journal, the standing mode, and webhook deliveries. The CLI commands `chaos`, `mode`, `webhook` and `sandbox requests` talk to it, and so do the MCP control tools. On loopback it is unauthenticated, because it controls a fake and never a provider. See [Control plane](/reference/control-plane).
+Under `/_pikopod/sandboxes/<name>/` the sandbox listener serves faults, the request journal, the standing mode, and webhook deliveries. The CLI commands `chaos`, `mode`, `webhook` and `requests` talk to it, and so do the MCP control tools. On loopback it is unauthenticated, because it controls a fake and never a provider. See [Control plane](/reference/control-plane).
 
 ## Ports, addresses and tokens
 

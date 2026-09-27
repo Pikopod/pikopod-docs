@@ -58,8 +58,4 @@ Generate a pack from a window of recorded traffic: requests in recorded order, s
 
 ## scenario reproduce
 
-```text
-pikopod scenario reproduce <fingerprint | bundle.json> [--sandbox <name>]
-```
-
-Turn a recorded incident into a pack that arms the same failure and replays the recorded request, then run it. Exit `0` when the failure recurs, `2` when it does not or the recording is gone. See [Reproduce](/reproduce/reproduce).
+Moved to [`pikopod reproduce`](/reference/cli/reproduce). `pikopod scenario reproduce` still works this release and prints one line on stderr naming the new spelling.

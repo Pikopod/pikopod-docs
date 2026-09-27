@@ -8,7 +8,7 @@ A scenario is a failure story run against a sandbox: send these requests, arm th
 ```bash
 pikopod scenario list examplepay                     # which archetypes bind to YOUR api
 pikopod scenario check examplepay declines timeouts    # run them
-pikopod scenario reproduce fp_14835fa32dfb           # a production failure becomes a test
+pikopod reproduce fp_14835fa32dfb           # a production failure becomes a test
 pikopod scenario from-drift fp_385153d1776c          # a shape change becomes a test
 pikopod scenario from-recordings examplepay          # recorded traffic becomes a pack
 pikopod scenario create examplepay "timeout after the charge succeeds"   # plain English, with your key

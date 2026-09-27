@@ -18,7 +18,7 @@ description: Everything pikopod persists lives under data_dir. Nothing is upload
 | `recordings/<upstream>.ndjson` | Sanitized exchanges, one JSON object per line, with one rotated generation `.ndjson.1`. | `up` |
 | `baselines/<upstream>.json` | Learned and frozen per-endpoint baselines. | `up` |
 | `events.ndjson` | The drift and incident event log. | `up` |
-| `alerts/state.json` | Dedupe and acknowledgement state. | `up`, `ack` |
+| `alerts/state.json` | Dedupe and acknowledgement state. | `up`, `agent ack` |
 | `specwatch/` | The spec watcher's pin, state and journal per upstream. | `up` |
 | `scenarios/<name>.yaml` | Generated scenario packs. | `scenario create`, `from-drift`, `from-recordings`, `reproduce` |
 
@@ -41,10 +41,10 @@ Recordings and the event log rotate by size, keeping one previous generation. Wi
 | To | Run |
 |---|---|
 | Clear a sandbox's stored resources | `pikopod sandbox reset <name>` |
-| Clear a running sandbox's request journal | `pikopod sandbox requests <name> --reset` |
-| Re-learn an upstream's baselines from scratch | `pikopod baseline reset <upstream>` |
+| Clear a running sandbox's request journal | `pikopod requests <name> --reset` |
+| Re-learn an upstream's baselines from scratch | `pikopod agent baseline reset <upstream>` |
 | Start over completely | Stop `pikopod up` and delete the directory. |
 
 ## Inspecting what is stored
 
-`pikopod inspect` prints stored records with tokenized fields visible, so you can confirm what was kept before you trust it. See [Inspecting](/observe/inspecting).
+`pikopod agent inspect` prints stored records with tokenized fields visible, so you can confirm what was kept before you trust it. See [Inspecting](/observe/inspecting).

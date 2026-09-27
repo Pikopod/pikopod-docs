@@ -1,0 +1,12 @@
+---
+title: pikopod reproduce
+description: Turn a recorded production failure into a scenario and run it against the sandbox.
+---
+
+```text
+pikopod reproduce <fingerprint | bundle.json> [--sandbox <name>]
+```
+
+Turn a recorded incident into a pack that arms the same failure and replays the recorded request, then run it. The argument is a fingerprint from the local event log, or a bundle written by `pikopod agent incidents export` on the host that recorded the incident. Exit `0` when the failure recurs, `2` when it does not or the recording is gone. See [Reproduce](/reproduce/reproduce).
+
+`pikopod scenario reproduce` is the previous spelling. It still works this release and prints one line on stderr naming this one.

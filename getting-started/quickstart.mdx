@@ -200,7 +200,7 @@ What to expect, and when:
 
 - **Incidents fire from the first request.** A 5xx, a 429, or an unreachable provider is a fact about one request and needs no history.
 - **Drift stays quiet for 50 samples and 48 hours per endpoint.** A shape change is a claim about what is normal, and a reference built from five responses has not seen your optional fields yet. This is on purpose, and it is why nothing about drift appears on day one.
-- **`pikopod status` shows progress**: every endpoint the agent has seen, its sample count, and whether it is warmed up.
+- **`pikopod agent status` shows progress**: every endpoint the agent has seen, its sample count, and whether it is warmed up.
 
 For a same-day evaluation, shorten the gates and reset them later:
 
@@ -211,14 +211,14 @@ warmup:
 ```
 
 ```bash
-pikopod incidents
+pikopod agent incidents
 ```
 
 ```text
 [] incident upstream_error         POST /charges (examplepay) · 4 occurrence(s) · last 2026-09-19T10:00:00Z
   fp_14835fa32dfb
-  reproduce: pikopod scenario reproduce fp_14835fa32dfb
-  export: pikopod incidents export fp_14835fa32dfb
+  reproduce: pikopod reproduce fp_14835fa32dfb
+  export: pikopod agent incidents export fp_14835fa32dfb
 ```
 
 See [Observe](/observe/overview).
@@ -226,7 +226,7 @@ See [Observe](/observe/overview).
 ## 9. Reproduce the failure on your laptop
 
 ```bash
-pikopod scenario reproduce fp_14835fa32dfb
+pikopod reproduce fp_14835fa32dfb
 ```
 
 ```text
@@ -235,12 +235,12 @@ PASSED — 1 assertion(s) passed; 0 not evaluated
 the failure now happens locally — fix it, then re-run: pikopod scenario check examplepay incident-14835fa32dfb
 ```
 
-The generated pack is an ordinary scenario. Commit it and it guards that path forever. When the agent runs on another host, `pikopod incidents export <fp>` writes a bundle that `reproduce` accepts in place of the fingerprint. See [Reproduce](/reproduce/reproduce).
+The generated pack is an ordinary scenario. Commit it and it guards that path forever. When the agent runs on another host, `pikopod agent incidents export <fp>` writes a bundle that `reproduce` accepts in place of the fingerprint. See [Reproduce](/reproduce/reproduce).
 
 ## 10. Regress forever
 
 ```bash
-pikopod replay --ci
+pikopod agent replay --ci
 ```
 
 ```text
@@ -258,7 +258,7 @@ Replay runs offline against recorded traffic and frozen baselines. See [Replay g
 - `up` started two listeners in one process: the sandbox on `:4600` and the observing agent on `:4700`.
 - `mode set` armed one story's failure on the served sandbox, and `mode verify` judged what your client sent against that story's expectations.
 - `spec-diff` normalized two spec versions and derived a severity for every change by one fixed rule.
-- `incidents` read the event log, and `reproduce` turned one event plus its redacted recording into a runnable pack.
+- `agent incidents` read the event log, and `reproduce` turned one event plus its redacted recording into a runnable pack.
 
 ## Adopt it in this order
 

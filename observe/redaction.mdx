@@ -20,7 +20,7 @@ Detection is generic: key names, value shape, and entropy. Never a list of provi
 
 **Numbers, booleans and nulls are kept unless their key names them as sensitive.** A number carries no shape signal. `5000` could be an amount, an account number or a timestamp, so the key name is the only evidence. Keys that look like secrets, identifiers, card data, phone numbers or expiry dates are substituted or tokenized whatever the JSON type, because a card number sent as a number must not ride through on its type. But `"amount": 245000` under a key pikopod does not recognise is written verbatim.
 
-That is a deliberate trade. Dropping every unrecognised number would discard most of what makes a baseline useful. It is the one place redaction is not fail-closed, and `pikopod inspect` says so every time it prints a record.
+That is a deliberate trade. Dropping every unrecognised number would discard most of what makes a baseline useful. It is the one place redaction is not fail-closed, and `pikopod agent inspect` says so every time it prints a record.
 
 ## Where it applies
 
@@ -50,7 +50,7 @@ Besides the sanitized headers, bodies and path, every record carries the exact c
 ## Verify it yourself
 
 ```bash
-pikopod inspect
+pikopod agent inspect
 ```
 
-`inspect` prints stored records with tokenized fields visible and a footnote naming the residual. A release-gating test seeds eighteen sentinel values (a secret, an email, a card number, a phone number, a PIN, a date of birth, a name, and more) into every position of a request and response, runs the full pipeline, and sweeps every persisted byte and every alert delivered. One sentinel byte anywhere is a release blocker.
+`agent inspect` prints stored records with tokenized fields visible and a footnote naming the residual. A release-gating test seeds eighteen sentinel values (a secret, an email, a card number, a phone number, a PIN, a date of birth, a name, and more) into every position of a request and response, runs the full pipeline, and sweeps every persisted byte and every alert delivered. One sentinel byte anywhere is a release blocker.

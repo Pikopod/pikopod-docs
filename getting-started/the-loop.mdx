@@ -20,9 +20,9 @@ Detecting the change is the easy part. The rest is being able to reproduce it, f
 | 2 | **Rehearse** | Every failure production will throw, not just the happy path. | `pikopod scenario list` · `run` · `chaos` · `mode` |
 | 3 | **Ship** | | |
 | 4 | **Observe** | A proxy watches your traffic for failures and shape changes, while the spec watcher watches what they publish. | `pikopod up` · `incidents` |
-| 5 | **Reproduce** | The failure becomes a runnable scenario in that same sandbox. | `pikopod scenario reproduce` |
+| 5 | **Reproduce** | The failure becomes a runnable scenario in that same sandbox. | `pikopod reproduce` |
 | 6 | **Fix and prove** | Run the scenario against the repair. | `pikopod fix` · `scenario check` |
-| 7 | **Regress forever** | Keep the scenario in offline CI. | `pikopod replay --ci` |
+| 7 | **Regress forever** | Keep the scenario in offline CI. | `pikopod agent replay --ci` |
 
 **Stage 5 is the one nothing else does.** You cannot ask a provider's sandbox to return that exact 503, with that body, at that point in your state machine. pikopod can, because the same tool recorded it and owns the sandbox. Mocking tools have a sandbox and no observer; monitoring tools have an observer and no sandbox.
 

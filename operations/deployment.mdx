@@ -74,10 +74,10 @@ Set `listen: 0.0.0.0` and a token inside the container so the published ports ar
 
 In rough order of how often they apply:
 
-1. **Export a bundle.** `pikopod incidents export <fp>` on the agent host writes one JSON file with the event, the already-redacted recording and the contract version. `pikopod scenario reproduce ./incident.json` and `pikopod fix ./incident.json` on a laptop read nothing from that laptop's `data_dir`, and the file keeps working after the origin's retention has aged the incident out. See [Incident bundles](/reproduce/incident-bundles).
+1. **Export a bundle.** `pikopod agent incidents export <fp>` on the agent host writes one JSON file with the event, the already-redacted recording and the contract version. `pikopod reproduce ./incident.json` and `pikopod fix ./incident.json` on a laptop read nothing from that laptop's `data_dir`, and the file keeps working after the origin's retention has aged the incident out. See [Incident bundles](/reproduce/incident-bundles).
 2. **Commit the generated pack.** `reproduce` writes an ordinary scenario pack. Once it is in the repository it guards that path forever and needs no recording at all.
 3. **Share `data_dir`** read-only (a mounted volume, an rsync) for a team that wants every incident, not one at a time.
-4. **Automate the export**: `pikopod incidents export --since 24h` in a cron job, attached to an issue or a pull request.
+4. **Automate the export**: `pikopod agent incidents export --since 24h` in a cron job, attached to an issue or a pull request.
 
 ## Sizing
 

@@ -6,8 +6,8 @@ description: Turn a recorded production failure into a scenario that recreates i
 You cannot ask a provider's sandbox to return that exact 503, with that body, at that point in your state machine. pikopod can, because the same tool recorded it and owns the sandbox.
 
 ```bash
-pikopod incidents                              # find the fingerprint
-pikopod scenario reproduce fp_14835fa32dfb
+pikopod agent incidents                              # find the fingerprint
+pikopod reproduce fp_14835fa32dfb
 ```
 
 ```text
@@ -55,8 +55,8 @@ Requests and responses are rebuilt from **redacted** recordings. Identifiers are
 When the agent runs on a host that is not your laptop, export the incident and reproduce from the file:
 
 ```bash
-pikopod incidents export fp_14835fa32dfb > incident.json     # on the agent host
-pikopod scenario reproduce ./incident.json                    # anywhere
+pikopod agent incidents export fp_14835fa32dfb > incident.json     # on the agent host
+pikopod reproduce ./incident.json                    # anywhere
 ```
 
 See [Incident bundles](/reproduce/incident-bundles).

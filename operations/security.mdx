@@ -22,7 +22,7 @@ Values are classified and rewritten on the way in, not cleaned up later:
 
 **The exception, stated plainly: numbers, booleans and nulls are kept unless their key names them as sensitive.** A number carries no shape signal. `5000` could be an amount, an account number or a timestamp, so key names are the only evidence, and an unrecognised key passes the value through. Keys that look like secrets, identifiers, card data, phone numbers or expiry dates are still substituted or tokenized whatever the JSON type, because a card number sent as a number must not ride through on its type. But `"amount": 245000` under a key pikopod does not recognise is written verbatim.
 
-This is a deliberate trade. Dropping every unrecognised number would discard most of what makes a baseline useful, and it is the one place redaction is not fail-closed. If that matters for a field, check it with `pikopod inspect` before you trust the recording. `volatile_fields` does not keep a field out of learning; it only stops its values from being tracked.
+This is a deliberate trade. Dropping every unrecognised number would discard most of what makes a baseline useful, and it is the one place redaction is not fail-closed. If that matters for a field, check it with `pikopod agent inspect` before you trust the recording. `volatile_fields` does not keep a field out of learning; it only stops its values from being tracked.
 
 Detection is generic: key names, value shape, entropy. Never a list of provider-specific prefixes, so it does not silently stop working when you add a provider nobody anticipated.
 
@@ -31,7 +31,7 @@ Detection is generic: key names, value shape, entropy. Never a list of provider-
 Verify it yourself rather than trusting this page:
 
 ```bash
-pikopod inspect
+pikopod agent inspect
 ```
 
 See [Redaction](/observe/redaction) for the rule set.

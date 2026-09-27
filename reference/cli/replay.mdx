@@ -1,10 +1,10 @@
 ---
-title: pikopod replay
+title: pikopod agent replay
 description: Gate builds offline on recorded traffic against frozen baselines.
 ---
 
 ```text
-pikopod replay --ci [upstreams...] [--handoff <path>]
+pikopod agent replay --ci [upstreams...] [--handoff <path>]
 ```
 
 Diffs each recorded response against its frozen baseline, entirely offline. With no upstream named, every configured upstream is gated. `--ci` is required.

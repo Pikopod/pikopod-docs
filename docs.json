@@ -15,8 +15,12 @@
     "href": "https://pikopod.com"
   },
   "fonts": {
-    "heading": { "family": "Rubik" },
-    "body": { "family": "Rubik" }
+    "heading": {
+      "family": "Rubik"
+    },
+    "body": {
+      "family": "Rubik"
+    }
   },
   "appearance": {
     "default": "system"
@@ -29,8 +33,14 @@
   },
   "navbar": {
     "links": [
-      { "label": "pikopod.com", "href": "https://pikopod.com" },
-      { "label": "Releases", "href": "https://github.com/pikopod/pikopod/releases" }
+      {
+        "label": "pikopod.com",
+        "href": "https://pikopod.com"
+      },
+      {
+        "label": "Releases",
+        "href": "https://github.com/pikopod/pikopod/releases"
+      }
     ],
     "primary": {
       "type": "github",
@@ -144,27 +154,58 @@
             "group": "CLI",
             "pages": [
               "reference/cli/overview",
-              "reference/cli/up",
-              "reference/cli/import",
-              "reference/cli/sandbox",
-              "reference/cli/scenario",
-              "reference/cli/chaos",
-              "reference/cli/mode",
-              "reference/cli/webhook",
-              "reference/cli/why",
-              "reference/cli/spec-diff",
-              "reference/cli/spec-update",
-              "reference/cli/incidents",
-              "reference/cli/replay",
-              "reference/cli/conformance",
-              "reference/cli/contract",
-              "reference/cli/status-report-inspect",
-              "reference/cli/ack-accept-baseline",
-              "reference/cli/volatile",
-              "reference/cli/fix",
-              "reference/cli/pr",
-              "reference/cli/mcp",
-              "reference/cli/init-doctor-demo"
+              {
+                "group": "Sandbox",
+                "pages": [
+                  "reference/cli/import",
+                  "reference/cli/up",
+                  "reference/cli/mode",
+                  "reference/cli/chaos",
+                  "reference/cli/webhook",
+                  "reference/cli/requests",
+                  "reference/cli/reproduce"
+                ]
+              },
+              {
+                "group": "Scenarios",
+                "pages": [
+                  "reference/cli/scenario"
+                ]
+              },
+              {
+                "group": "CI",
+                "pages": [
+                  "reference/cli/spec-diff"
+                ]
+              },
+              {
+                "group": "Observe",
+                "pages": [
+                  "reference/cli/incidents",
+                  "reference/cli/status-report-inspect",
+                  "reference/cli/ack-accept-baseline",
+                  "reference/cli/conformance",
+                  "reference/cli/contract",
+                  "reference/cli/spec-update",
+                  "reference/cli/volatile",
+                  "reference/cli/replay"
+                ]
+              },
+              {
+                "group": "Setup",
+                "pages": [
+                  "reference/cli/init-doctor-demo",
+                  "reference/cli/mcp"
+                ]
+              },
+              {
+                "group": "More",
+                "pages": [
+                  "reference/cli/fix",
+                  "reference/cli/pr",
+                  "reference/cli/sandbox"
+                ]
+              }
             ]
           },
           {
@@ -196,5 +237,11 @@
   },
   "seo": {
     "indexing": "all"
-  }
+  },
+  "redirects": [
+    {
+      "source": "/reference/cli/why",
+      "destination": "/reference/cli/requests"
+    }
+  ]
 }

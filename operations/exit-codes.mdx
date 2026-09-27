@@ -8,18 +8,18 @@ Every pikopod command exits with one of three codes, and the separation between 
 | Code | Meaning | Who scripts against it |
 |---|---|---|
 | `0` | Clean. The check ran and found nothing. | CI passes |
-| `1` | The check ran and failed: drift found, assertions failed, or the provider violated its own spec. Emitted by `replay --ci`, `spec-diff`, `scenario check`, `scenario from-drift`, and `conformance --strict`. | CI fails the build on provider drift |
+| `1` | The check ran and failed: drift found, assertions failed, or the provider violated its own spec. Emitted by `agent replay --ci`, `spec-diff`, `scenario check`, `scenario from-drift`, and `conformance --strict`. | CI fails the build on provider drift |
 | `2` | pikopod or configuration error: bad YAML, a refused bind, missing config, a document that cannot be loaded, or a result pikopod cannot verify. | Distinguishes "provider changed" from "tool misconfigured" |
 
 `2` also covers results pikopod cannot stand behind. `pikopod fix` exits `2` when its impact scan finds nothing, because a literal scan cannot distinguish "this field is unused" from "this codebase spells it differently". See [fix](/reproduce/fix).
 
 ## Readers versus gates
 
-`pikopod incidents` is a **reader**, not a gate. It exits `0` whether or not it found anything, and `2` only when it cannot read the event log. Nothing about "I found incidents" is an exit-code signal. Script against `--format json` instead, where `total_matching` and `truncated` are always present so a shortened list can never be mistaken for a clean one.
+`pikopod agent incidents` is a **reader**, not a gate. It exits `0` whether or not it found anything, and `2` only when it cannot read the event log. Nothing about "I found incidents" is an exit-code signal. Script against `--format json` instead, where `total_matching` and `truncated` are always present so a shortened list can never be mistaken for a clean one.
 
 ## Reproduce has no exit 1
 
-`pikopod scenario reproduce` exits `0` when it writes a pack and `2` when it refuses: when the incident's recording has aged out of retention, or when the pack ran and the failure did **not** recur, which means pikopod cannot stand behind it as a reproduction. It never fabricates a request to avoid refusing.
+`pikopod reproduce` exits `0` when it writes a pack and `2` when it refuses: when the incident's recording has aged out of retention, or when the pack ran and the failure did **not** recur, which means pikopod cannot stand behind it as a reproduction. It never fabricates a request to avoid refusing.
 
 The contrast with its sibling is deliberate. `pikopod scenario from-drift` exits `1` on a failed replay because its pack *pins the old contract*, so failing confirms the drift. `reproduce` is inverted: its pack *recreates a failure*, so failing means the recreation did not work. One is a finding; the other is an unverifiable result.
 
@@ -27,8 +27,8 @@ The contrast with its sibling is deliberate. `pikopod scenario from-drift` exits
 
 `UNVERIFIABLE` is a real outcome, distinct from a pass, but it is not a fourth exit code. It maps onto the existing ones by what it means:
 
-- `conformance` counts checks whose evidence the sanitizer removed and reports them as neither pass nor violation, leaving the exit code alone.
-- `fix` and `scenario reproduce` exit `2`, because a result pikopod cannot stand behind is a tool outcome, never a finding.
+- `agent conformance` counts checks whose evidence the sanitizer removed and reports them as neither pass nor violation, leaving the exit code alone.
+- `fix` and `reproduce` exit `2`, because a result pikopod cannot stand behind is a tool outcome, never a finding.
 - Over MCP, every tool returns the verdict explicitly. See [MCP tools](/reference/mcp-tools).
 
 ## Schema versions

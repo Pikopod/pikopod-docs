@@ -1,10 +1,10 @@
 ---
-title: pikopod spec-update
+title: pikopod agent spec-update
 description: Write a traffic-evidenced spec update. Additive patches applied in place, narrowings as suggestions.
 ---
 
 ```text
-pikopod spec-update <upstream> [flags]
+pikopod agent spec-update <upstream> [flags]
 ```
 
 Combines two evidence streams, conformance violations over recorded traffic and the traffic overlay's matured admissions, into patches against the original document. Additive changes (a new field, a new enum value, a new status) are applied in place, format-preserving. Narrowings are listed as suggestions and never applied.
@@ -30,7 +30,7 @@ When the spec and the wire agree: `no traffic-evidenced changes — the spec and
 ## Carry it as a pull request
 
 ```bash
-pikopod spec-update examplepay --out openapi.yaml --handoff update.json
+pikopod agent spec-update examplepay --out openapi.yaml --handoff update.json
 pikopod pr open --commit openapi.yaml --handoff update.json
 ```
 

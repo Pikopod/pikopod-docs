@@ -36,7 +36,7 @@ all checks passed — point your app at the agent and run `pikopod up`
 
 | Message | What to do |
 |---|---|
-| `the sandbox server is not running` | Start `pikopod up`. `chaos`, `mode`, `webhook` and `sandbox requests` talk to the running sandbox. |
+| `the sandbox server is not running` | Start `pikopod up`. `chaos`, `mode`, `webhook` and `requests` talk to the running sandbox. |
 | `unknown sandbox` | `pikopod sandbox list` shows what is registered. |
 | `sandbox already exists` | Use `pikopod sandbox reset <name>` to clear its state, `pikopod import <name> --update` to re-import, or pick another name. |
 | `no spec given` | Pass `--spec <file-or-url>`. |
@@ -73,10 +73,10 @@ all checks passed — point your app at the agent and run `pikopod up`
 
 | Message | What to do |
 |---|---|
-| `agent is not running` | `status`, `accept` and the live path of `ack` need `pikopod up`. |
-| `no baselines for <upstream>` | Warmup has not completed. Run `pikopod up`, send traffic, and check `pikopod status`. |
+| `agent is not running` | `agent status`, `agent accept` and the live path of `agent ack` need `pikopod up`. |
+| `no baselines for <upstream>` | Warmup has not completed. Run `pikopod up`, send traffic, and check `pikopod agent status`. |
 | `no recordings for <upstream>` | Nothing has been proxied yet. Point your app at `http://127.0.0.1:4700/<upstream>`. |
-| `unknown fingerprint` | Copy the `fp_…` from the alert or from `pikopod incidents`. |
+| `unknown fingerprint` | Copy the `fp_…` from the alert or from `pikopod agent incidents`. |
 | `impact for <fp> is UNVERIFIABLE` | `fix` found no literal occurrence of the field. Re-run with `--dir`, or search yourself. Not proof the field is unused. |
 | `the sandbox did not reproduce this failure` | The recorded body is redacted, and a 4xx usually depends on it. Compare the pack with what your code actually sends. |
 | `no recording for this incident` | Retention aged it out. Raise `retention.max_age_hours`, or reproduce from a newer occurrence. |
@@ -90,4 +90,4 @@ all checks passed — point your app at the agent and run `pikopod up`
 
 ## Verbose diagnostics
 
-Set `PIKOPOD_DEBUG=1` for verbose output. Include the provider, the spec you imported, what pikopod said, and what you expected when [filing an issue](https://github.com/pikopod/pikopod/issues). `pikopod inspect` shows what is safe to share.
+Set `PIKOPOD_DEBUG=1` for verbose output. Include the provider, the spec you imported, what pikopod said, and what you expected when [filing an issue](https://github.com/pikopod/pikopod/issues). `pikopod agent inspect` shows what is safe to share.
