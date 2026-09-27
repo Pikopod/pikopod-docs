@@ -91,12 +91,12 @@ See [Replay gate](/observe/replay-gate).
 
 ## Running the sandbox in CI
 
-Scenario runs need no server: `pikopod scenario run` builds its own engine in-process.
+Scenario runs need no server: `pikopod scenario check` builds its own engine in-process.
 
 ```bash
 ./pikopod import examplepay --spec ./specs/examplepay.yaml --seed ci-fixed
-./pikopod scenario run examplepay declines timeouts retry_storm partial_failure
-./pikopod scenario run examplepay incident-14835fa32dfb
+./pikopod scenario check examplepay declines timeouts retry_storm partial_failure
+./pikopod scenario check examplepay incident-14835fa32dfb
 ```
 
 Pin `--seed` so transcripts are byte-identical between runs. Packs are looked up in `./scenarios` first, then in `<data_dir>/scenarios`, so a committed `scenarios/` directory is the regression suite.

@@ -85,7 +85,7 @@ Which failure archetypes bind to a sandbox's API, and why the rest do not.
 
 `CLEAN` when at least one archetype binds. `UNVERIFIABLE` when none does, with every reason attached. `data` carries the archetypes, saved packs, and endpoint count.
 
-### scenario_run
+### scenario_check
 
 Run archetypes or packs against a throwaway copy of a sandbox. The served sandbox is untouched, and this drives pikopod's own requests, not the caller's application.
 
@@ -95,7 +95,7 @@ Run archetypes or packs against a throwaway copy of a sandbox. The served sandbo
 | `names` | yes | Archetype ids or pack names |
 | `bind` | | Role to operationId overrides |
 
-`CLEAN` when all pass, `FINDINGS` when any fails, `ERROR` when a step could not execute. `data.runs` carries each scenario's result.
+`CLEAN` when all pass, `FINDINGS` when any fails, `ERROR` when a step could not execute. `data.runs` carries each scenario's result. `scenario_run`, the previous name, still answers this release but is not listed.
 
 ### get_requests
 

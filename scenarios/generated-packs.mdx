@@ -14,7 +14,7 @@ pikopod scenario from-drift fp_385153d1776c
 ```text
 pinned fp_385153d1776c (GET /transaction/tx_{id}) as pikopod-data/scenarios/drift-385153d1776c.yaml
 PASSED — 2 assertion(s) passed; 0 not evaluated
-baseline pinned and green — a future re-import that adopts this change will fail `pikopod scenario run examplepay drift-385153d1776c`
+baseline pinned and green — a future re-import that adopts this change will fail `pikopod scenario check examplepay drift-385153d1776c`
 ```
 
 The pack pins the contract you integrated against via `contractVersion`. It seeds a resource with the baseline's value, reads it back, and asserts the old shape: the field exists, the type matches, the value is in the known set, the status is what it was. It passes while your sandbox still honours that baseline and fails the moment you re-import a spec that adopts the provider's change, so the break happens here rather than in production.
@@ -39,7 +39,7 @@ pikopod scenario from-recordings examplepay --last 20 --name checkout-flow
 
 ```text
 generated checkout-flow from 20 recording(s): pikopod-data/scenarios/checkout-flow.yaml
-run it: pikopod scenario run examplepay checkout-flow
+run it: pikopod scenario check examplepay checkout-flow
 chains are conservative (identifier-shaped, produced-before-consumed only) — review the pack before trusting it in CI
 ```
 

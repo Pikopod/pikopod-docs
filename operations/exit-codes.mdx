@@ -8,7 +8,7 @@ Every pikopod command exits with one of three codes, and the separation between 
 | Code | Meaning | Who scripts against it |
 |---|---|---|
 | `0` | Clean. The check ran and found nothing. | CI passes |
-| `1` | The check ran and failed: drift found, assertions failed, or the provider violated its own spec. Emitted by `replay --ci`, `spec-diff`, `scenario run`, `scenario from-drift`, and `conformance --strict`. | CI fails the build on provider drift |
+| `1` | The check ran and failed: drift found, assertions failed, or the provider violated its own spec. Emitted by `replay --ci`, `spec-diff`, `scenario check`, `scenario from-drift`, and `conformance --strict`. | CI fails the build on provider drift |
 | `2` | pikopod or configuration error: bad YAML, a refused bind, missing config, a document that cannot be loaded, or a result pikopod cannot verify. | Distinguishes "provider changed" from "tool misconfigured" |
 
 `2` also covers results pikopod cannot stand behind. `pikopod fix` exits `2` when its impact scan finds nothing, because a literal scan cannot distinguish "this field is unused" from "this codebase spells it differently". See [fix](/reproduce/fix).

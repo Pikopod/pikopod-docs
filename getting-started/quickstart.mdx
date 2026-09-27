@@ -71,7 +71,7 @@ archetypes vs examplepay (4 endpoints):
   ✓ partial_failure            Partial failure  (1 candidate binding(s))
   ✓ downtime_recovery          Downtime and recovery  (1 candidate binding(s))
 
-run one: pikopod scenario run examplepay <name> [<name>...]
+run one: pikopod scenario check examplepay <name> [<name>...]
 ```
 
 Eleven failure stories bind themselves to the operations your spec declares. The one that cannot bind says why: the spec declares no webhook event, so there is nothing to deliver twice. pikopod never guesses a test into existence. See [Archetypes](/scenarios/archetypes).
@@ -79,7 +79,7 @@ Eleven failure stories bind themselves to the operations your spec declares. The
 ## 5. Run two of them
 
 ```bash
-pikopod scenario run examplepay declines retry_storm
+pikopod scenario check examplepay declines retry_storm
 ```
 
 ```text
@@ -88,11 +88,12 @@ pikopod scenario run examplepay declines retry_storm
     PASSED         declined         POST /charges → 400
     NOT_EVALUATED  clear            cleared matching faults
     PASSED         recovered        POST /charges → 201
-✓ retry_storm — PASSED (4 assertion(s) passed; 0 not evaluated)
+✓ retry_storm — PASSED (7 assertion(s) passed; 0 not evaluated)
     NOT_EVALUATED  arm              armed error on POST /charges
     PASSED         attempt1         POST /charges → 503
     PASSED         attempt2         POST /charges → 503
     PASSED         attempt3         POST /charges → 201
+    PASSED         storm-shape      3 matcher(s) matched in order
 ```
 
 Runs are ephemeral by default: each one drives its own requests at a throwaway copy of the sandbox, so nothing you serve is touched. Exit `0` when everything passes, `1` when an assertion fails, `2` on a tool error. See [Running scenarios](/scenarios/running).
@@ -231,7 +232,7 @@ pikopod scenario reproduce fp_14835fa32dfb
 ```text
 reproduced fp_14835fa32dfb (examplepay answered 503 on POST /charges) as pikopod-data/scenarios/incident-14835fa32dfb.yaml
 PASSED — 1 assertion(s) passed; 0 not evaluated
-the failure now happens locally — fix it, then re-run: pikopod scenario run examplepay incident-14835fa32dfb
+the failure now happens locally — fix it, then re-run: pikopod scenario check examplepay incident-14835fa32dfb
 ```
 
 The generated pack is an ordinary scenario. Commit it and it guards that path forever. When the agent runs on another host, `pikopod incidents export <fp>` writes a bundle that `reproduce` accepts in place of the fingerprint. See [Reproduce](/reproduce/reproduce).
@@ -253,7 +254,7 @@ Replay runs offline against recorded traffic and frozen baselines. See [Replay g
 
 - `import` normalized the spec into pikopod's internal representation, where every field carries provenance, and registered a sandbox under `data_dir`.
 - `scenario list` bound eleven provider-agnostic archetypes to the operations the spec declares, refusing the one it could not ground.
-- `scenario run` expanded two archetypes into concrete steps and ran them against an ephemeral engine.
+- `scenario check` expanded two archetypes into concrete steps and ran them against an ephemeral engine.
 - `up` started two listeners in one process: the sandbox on `:4600` and the observing agent on `:4700`.
 - `mode set` armed one story's failure on the served sandbox, and `mode verify` judged what your client sent against that story's expectations.
 - `spec-diff` normalized two spec versions and derived a severity for every change by one fixed rule.

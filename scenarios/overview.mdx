@@ -7,7 +7,7 @@ A scenario is a failure story run against a sandbox: send these requests, arm th
 
 ```bash
 pikopod scenario list examplepay                     # which archetypes bind to YOUR api
-pikopod scenario run examplepay declines timeouts    # run them
+pikopod scenario check examplepay declines timeouts    # run them
 pikopod scenario reproduce fp_14835fa32dfb           # a production failure becomes a test
 pikopod scenario from-drift fp_385153d1776c          # a shape change becomes a test
 pikopod scenario from-recordings examplepay          # recorded traffic becomes a pack
@@ -27,7 +27,7 @@ pikopod scenario create examplepay "timeout after the charge succeeds"   # plain
 
 ## Runs are ephemeral
 
-`scenario run` builds its own engine in-process against a throwaway copy of the sandbox. Nothing you serve with `pikopod up` is touched, and no server needs to be running. When you want your own application to meet a failure on the served sandbox, use a [mode](/sandbox/modes) instead.
+`scenario check` builds its own engine in-process against a throwaway copy of the sandbox. Nothing you serve with `pikopod up` is touched, and no server needs to be running. When you want your own application to meet a failure on the served sandbox, use a [mode](/sandbox/modes) instead.
 
 ## Exit codes
 
@@ -35,4 +35,4 @@ pikopod scenario create examplepay "timeout after the charge succeeds"   # plain
 
 ## Where packs live
 
-`scenario run` looks for packs in `./scenarios` (relative to where you run it) and in `<data_dir>/scenarios`. Generated packs are written to `<data_dir>/scenarios`. Copy one into `./scenarios` to check it in. Packs are ordinary YAML, and a committed `scenarios/` directory is the regression suite for every provider change you have survived.
+`scenario check` looks for packs in `./scenarios` (relative to where you run it) and in `<data_dir>/scenarios`. Generated packs are written to `<data_dir>/scenarios`. Copy one into `./scenarios` to check it in. Packs are ordinary YAML, and a committed `scenarios/` directory is the regression suite for every provider change you have survived.

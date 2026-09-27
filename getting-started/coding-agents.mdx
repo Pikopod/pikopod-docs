@@ -54,7 +54,7 @@ The readers are the checks an agent cannot make by reading files.
 | `replay_ci` | The CI gate: recordings against frozen baselines. |
 | `conformance` | Whether the provider's recorded responses obey its own spec. Redacted evidence counts as unverifiable, never as a pass. |
 | `reproduce` | A recorded incident turned into a pack and run locally. |
-| `scenario_list`, `scenario_run` | Which archetypes bind to a sandbox, with the reason when one does not, and the verdict of running them against a throwaway copy. |
+| `scenario_list`, `scenario_check` | Which archetypes bind to a sandbox, with the reason when one does not, and the verdict of running them against a throwaway copy. |
 | `get_requests` | What the caller's own code actually sent to the running sandbox. |
 | `mode_verify` | Whether what the caller's own code sent is what the standing scenario expects. The one check that judges the caller's code, not the sandbox. |
 

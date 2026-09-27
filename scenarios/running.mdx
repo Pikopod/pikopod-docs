@@ -1,10 +1,10 @@
 ---
 title: Running scenarios
-description: scenario run, its flags, and how to read the result.
+description: scenario check, its flags, and how to read the result.
 ---
 
 ```bash
-pikopod scenario run examplepay declines retry_storm
+pikopod scenario check examplepay declines retry_storm
 ```
 
 ```text
@@ -50,7 +50,7 @@ Each run drives its own requests at a throwaway copy of the sandbox, so a test n
 ## Against a real endpoint
 
 ```bash
-pikopod scenario run examplepay checkout-flow --target https://sandbox.examplepay.test --target-header 'Authorization:Bearer …'
+pikopod scenario check examplepay checkout-flow --target https://sandbox.examplepay.test --target-header 'Authorization:Bearer …'
 ```
 
 Only `REQUEST`, `NOTE` and `SNAPSHOT` steps are allowed. A real endpoint has no fault arming, seeded state, virtual clock, webhook outbox or request journal to consult, so any other step type is refused before anything runs. Header values are never printed.
@@ -59,7 +59,7 @@ Only `REQUEST`, `NOTE` and `SNAPSHOT` steps are allowed. A real endpoint has no 
 
 ```bash
 pikopod import examplepay --spec ./specs/examplepay.yaml --seed ci-fixed
-pikopod scenario run examplepay declines timeouts retry_storm partial_failure incident-14835fa32dfb
+pikopod scenario check examplepay declines timeouts retry_storm partial_failure incident-14835fa32dfb
 ```
 
 Pin `--seed` so transcripts are byte-identical between runs. See [CI integration](/gate/ci-integration#running-the-sandbox-in-ci).

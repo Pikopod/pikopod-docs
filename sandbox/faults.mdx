@@ -54,7 +54,7 @@ These match on the event (`--event`, default any) rather than on a method and pa
 
 ## Virtual versus real time
 
-By default every delay is virtualized: the response is instant and carries `x-pikopod-fault-delay-ms` with the delay it represents. That is what `scenario run` measures, and it is why a 30-second timeout scenario finishes in milliseconds. `hang`, `slow_body`, `connection_reset`, `malformed_response` and `wrong_content_length` are transport-level lies and only act on the real wire.
+By default every delay is virtualized: the response is instant and carries `x-pikopod-fault-delay-ms` with the delay it represents. That is what `scenario check` measures, and it is why a 30-second timeout scenario finishes in milliseconds. `hang`, `slow_body`, `connection_reset`, `malformed_response` and `wrong_content_length` are transport-level lies and only act on the real wire.
 
 To put delays and hangs on the wire for your own tests, arm with `--wallclock`, or start the server with `pikopod up --wallclock-faults`.
 

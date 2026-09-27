@@ -1,6 +1,6 @@
 ---
 title: pikopod scenario
-description: List, run, create, and derive scenarios.
+description: List, check, create, and derive scenarios.
 ---
 
 Names resolve to archetypes first, then to saved packs. Packs are looked up in `./scenarios` and then `<data_dir>/scenarios`, by their `name` field or by a path ending in `.yaml` or `.yml`.
@@ -13,10 +13,10 @@ pikopod scenario list <sandbox> [-v]
 
 Which archetypes bind to this sandbox's API, with the reason for each that does not, plus saved packs. `-v` shows which operations each archetype bound to. Works offline. See [Archetypes](/scenarios/archetypes).
 
-## scenario run
+## scenario check
 
 ```text
-pikopod scenario run <sandbox> <scenarios...> [flags]
+pikopod scenario check <sandbox> <scenarios...> [flags]
 ```
 
 | Flag | Meaning |
@@ -29,6 +29,8 @@ pikopod scenario run <sandbox> <scenarios...> [flags]
 | `--target-header 'Name:value'` | A header sent on every remote request. Repeatable. Values are never printed. |
 
 Exit `0` when every scenario passes, `1` when any assertion fails, `2` when a step could not execute or the run could not be set up. No running server is needed; the run builds its own engine. See [Running scenarios](/scenarios/running).
+
+`pikopod scenario run` is the previous spelling. It still works this release, prints the same output, and adds one line on stderr naming `scenario check`.
 
 ## scenario create
 

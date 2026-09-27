@@ -29,7 +29,7 @@ Zero candidates is a first-class result with a reason attached, not an error and
 ## Override a role
 
 ```bash
-pikopod scenario run examplepay declines --bind op=createCharge
+pikopod scenario check examplepay declines --bind op=createCharge
 ```
 
 `--bind role=operationId` overrides one role. The value is an `operationId` from your spec. If it names something the API does not have, the expansion fails to ground rather than running a test that cannot mean anything. `--bind` is repeatable and also accepted by `mode set`.
@@ -41,7 +41,7 @@ A sandbox whose contract a model extracted from documentation has only **extract
 ```text
   ✗ declines                   Declines
       every candidate rests on extracted facts only; assert a role with --bind
-      assert it: pikopod scenario run examplepay declines --bind op=createIntent
+      assert it: pikopod scenario check examplepay declines --bind op=createIntent
 ```
 
 Passing it is you asserting that the operation plays that role, and the run says so. An asserted operation must still have the role's shape: a create role needs a create. What you vouch for is the fact the docs left out, not the shape.

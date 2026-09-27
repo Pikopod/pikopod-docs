@@ -42,7 +42,7 @@ Binding a non-loopback address requires a token, sent as `X-Pikopod-Token` on ev
 
 ## Real delays
 
-Armed delays are virtualized by default: a `latency` fault of 30 seconds is instant on the wire and reported in the `x-pikopod-fault-delay-ms` response header, which is what `scenario run` measures against. To make delays and hangs real on the wire for your own tests:
+Armed delays are virtualized by default: a `latency` fault of 30 seconds is instant on the wire and reported in the `x-pikopod-fault-delay-ms` response header, which is what `scenario check` measures against. To make delays and hangs real on the wire for your own tests:
 
 ```bash
 pikopod up --wallclock-faults

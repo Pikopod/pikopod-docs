@@ -3,7 +3,7 @@ title: Modes
 description: Put the served sandbox into a scenario's standing state, then run your own tests against it.
 ---
 
-`pikopod scenario run` drives its own requests against a throwaway engine, so your application is never in the loop. A mode is the other half: it arms the scenario's standing conditions on the sandbox `pikopod up` is serving, and then your own tests, your own app, Postman, or plain curl meet the failure.
+`pikopod scenario check` drives its own requests against a throwaway engine, so your application is never in the loop. A mode is the other half: it arms the scenario's standing conditions on the sandbox `pikopod up` is serving, and then your own tests, your own app, Postman, or plain curl meet the failure.
 
 ```bash
 pikopod mode set examplepay timeouts

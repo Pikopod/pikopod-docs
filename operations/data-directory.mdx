@@ -11,7 +11,7 @@ description: Everything pikopod persists lives under data_dir. Nothing is upload
 |---|---|---|
 | `.salt` | Per-install tokenization salt, mode `0600`. Treat as a secret. | First run, `doctor` |
 | `sandboxes.json` | The sandbox registry: id, seed, spec source, origin, linked upstream, webhook URL. | `import`, `sandbox add` |
-| `sandbox.db` | The sandbox resource store (SQLite, pure Go). | `up`, `scenario run --persist` |
+| `sandbox.db` | The sandbox resource store (SQLite, pure Go). | `up`, `scenario check --persist` |
 | `apis/<name>.ir.json` | The normalized contract a sandbox serves. | `import`, `sandbox webhooks` |
 | `apis/<upstream>.observed.json` | The traffic overlay, when `refine.enabled` is on. | `up` |
 | `apis/<upstream>.behaviour.json` | The observed state machine, when `behaviour.enabled` is on. | `up` |

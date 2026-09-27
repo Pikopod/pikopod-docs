@@ -9,8 +9,8 @@ The validator is strict on purpose: unknown keys are rejected, because a pack th
 
 | Key | Required | Type | Meaning |
 |---|---|---|---|
-| `name` | yes | string | The pack's name. `scenario run` resolves packs by it. |
-| `provider` | yes | string | Metadata. `scenario run` targets whatever sandbox you name on the command line. |
+| `name` | yes | string | The pack's name. `scenario check` resolves packs by it. |
+| `provider` | yes | string | Metadata. `scenario check` targets whatever sandbox you name on the command line. |
 | `description` | | string | |
 | `contractVersion` | | integer | Set by `from-drift` and `reproduce`. The pack runs at that overlay version. |
 | `definition` | yes | object | |
