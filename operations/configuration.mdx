@@ -189,7 +189,7 @@ llm:
   model: gpt-4o-mini   # optional; each provider has a default
 ```
 
-Bring your own key. pikopod never ships a key and never proxies your requests through anyone else. Set `provider` to the provider the key belongs to (`openai` or `openrouter`), and the key in `api_key` or in `PIKOPOD_LLM_KEY`. The provider's own standard key variable is also honoured, so an existing environment keeps working.
+Bring your own key. pikopod never ships a key and never proxies your requests through anyone else. Set `provider` to the provider the key belongs to (`openai`, `anthropic` or `openrouter`), and the key in `api_key` or in `PIKOPOD_LLM_KEY`. The provider's own standard key variable is also honoured, so an existing environment keeps working.
 
 When a key is stored **in** `pikopod.yaml`, the file must be mode `0600`. Environment-provided keys do not make the file secret.
 

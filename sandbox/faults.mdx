@@ -20,6 +20,8 @@ pikopod chaos examplepay --clear --method POST --path /charges
 | `hang` | The connection is held open for `delayMs` (default 60000) with no response. |
 | `slow_body` | The body trickles out over `delayMs` (default 30000). |
 | `connection_reset` | The connection is dropped with a reset, not a clean close. The "connection reset by peer" your retry logic must handle. |
+| `empty_response` | The connection is accepted and closed cleanly with no status line, headers or body. |
+| `random_data_then_close` | Bytes that cannot be parsed as an HTTP response, then a clean close. |
 | `malformed_response` | A valid status line followed by garbage. |
 | `wrong_content_length` | More bytes declared than sent. The client sees an unexpected end of file mid-body. |
 
@@ -54,7 +56,7 @@ These match on the event (`--event`, default any) rather than on a method and pa
 
 ## Virtual versus real time
 
-By default every delay is virtualized: the response is instant and carries `x-pikopod-fault-delay-ms` with the delay it represents. That is what `scenario check` measures, and it is why a 30-second timeout scenario finishes in milliseconds. `hang`, `slow_body`, `connection_reset`, `malformed_response` and `wrong_content_length` are transport-level lies and only act on the real wire.
+By default every delay is virtualized: the response is instant and carries `x-pikopod-fault-delay-ms` with the delay it represents. That is what `scenario check` measures, and it is why a 30-second timeout scenario finishes in milliseconds. `hang`, `slow_body`, `connection_reset`, `empty_response`, `random_data_then_close`, `malformed_response` and `wrong_content_length` are transport-level lies and only act on the real wire.
 
 To put delays and hangs on the wire for your own tests, arm with `--wallclock`, or start the server with `pikopod up --wallclock-faults`.
 
@@ -77,3 +79,7 @@ pikopod chaos examplepay --clear
 ```
 
 `--clear` with no method and path clears every fault, including webhook faults. `mode clear` also clears every fault. See [`pikopod chaos`](/reference/cli/chaos).
+
+## Faults versus rules
+
+A fault answers every matching request until cleared, whatever the request carries. When the answer depends on the request body or on what is already stored, write a [rule](/sandbox/rules) instead. Faults are consulted first, then rules, then the operation.

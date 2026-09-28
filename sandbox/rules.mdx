@@ -1,0 +1,120 @@
+---
+title: Rules
+description: Answer a declared operation by rule when the request or the stored state looks a certain way.
+---
+
+The sandbox answers from the spec, from armed faults, and from recorded traffic. None of those can say "when a charge with this reference already exists, answer 422 with this body", which is what an undocumented provider rule is. A rule can.
+
+Rules live beside the imported spec in `<data_dir>/apis/<sandbox>.rules.json`, one versioned file per sandbox, written atomically. The sandbox loads them with the spec, and a rule that cannot be true of this spec is refused at load, by name.
+
+```json
+{
+  "version": 1,
+  "rules": [
+    {
+      "id": "unique-reference",
+      "version": 1,
+      "provenance": "manual",
+      "when": { "method": "POST", "path": "/charges", "body": { "reference": "exists_in_store" } },
+      "respond": { "status": 422, "body": { "error": { "code": "reference_taken", "message": "a charge with this reference already exists" } } }
+    }
+  ]
+}
+```
+
+With that file in place and `pikopod up` serving `examplepay`, the first create with `reference: order-77` is answered from the spec and the second by the rule:
+
+```text
+201
+422
+```
+
+```text
+HTTP/1.1 422 Unprocessable Entity
+Content-Type: application/json; charset=utf-8
+X-Pikopod-Operation: createCharge
+X-Pikopod-Rule: unique-reference
+
+{ "error": { "code": "reference_taken", "message": "a charge with this reference already exists" } }
+```
+
+Every response a rule produced carries `x-pikopod-rule` with the rule's id.
+
+## When a rule is consulted
+
+For every request, in this order: auth, faults, route, **rules**, operation. A rule is only consulted once the request is authenticated, no armed fault answered, and the route matched a declared operation. The first matching rule in file order wins, and the operation behind it never runs. A rule cannot fire on a route the spec does not declare.
+
+## `when`
+
+| Key | Meaning |
+|---|---|
+| `method`, `path` | The operation, with the path template as in the spec. Required. |
+| `body` | Request body fields to matchers, all of which must hold. |
+| `state` | Resource types to state conditions, all of which must hold. |
+| `times`, `per` | Fire for the first N matching requests, then step aside; `per` scopes the window to `global`, `idempotency-key` or `resource`, as for [faults](/sandbox/faults). |
+
+Body matchers:
+
+| Matcher | Holds when |
+|---|---|
+| `"exists"` | The field is present in the request body. |
+| `"absent"` | The field is not present. |
+| `{"equals": v}` | The field equals `v`, compared as JSON. |
+| `"exists_in_store"` | A resource of the operation's type already stores this field with the same value. This is how uniqueness rules are written. |
+
+State conditions read the `state` a resource carries in the store, which a rule's `set_state` sets:
+
+| Condition | On a request that addresses a resource of that type | On any other request |
+|---|---|---|
+| `{"state_is": s}` | That resource exists and its state is `s`. | Some resource of the type has state `s`. |
+| `{"state_not": s}` | That resource exists and its state is not `s`. | Resources of the type exist and none has state `s`. |
+
+## `respond`
+
+| Key | Meaning |
+|---|---|
+| `status` | The status to answer with. Required. |
+| `headers` | Response headers to add. |
+| `body` | A literal JSON body, served as `application/json`. |
+| `example` | Instead of `body`: a status whose declared example in the spec is served. The spec must declare an example for it on this operation. |
+| `set_state` | `{ "resource": "<type>", "state": "<state>" }`. Sets the state of the resource the request addresses. Skipped, and said so in the trace, when the request addresses none. |
+| `emit` | A declared webhook event to deliver. Undeclared events are refused at load; pikopod never invents one. |
+
+`provenance` is `manual` for a rule you wrote, `promoted:<fingerprint>` for one promoted from an observed divergence, and `imported:<fingerprint>` for one that arrived in an incident bundle. `version` is stamped when the rule is first saved, and the file's `version` advances on every save.
+
+## Seeing which rule fired
+
+`requests --explain` replays a request against a fork and names the rule:
+
+```bash
+pikopod requests examplepay --explain POST /charges --body '{"amount":5000,"currency":"usd"}'
+```
+
+```text
+replaying POST /charges against a fork of examplepay (seed docs) — no real state is touched
+
+  auth       sending the issued credential in authorization
+  faults     no armed fault fired
+  route      matched createCharge
+  auth       declared auth satisfied
+  rules      rule reference-required fired: POST /charges when body.reference absent
+
+→ 422
+  Content-Type: application/json; charset=utf-8
+  X-Pikopod-Operation: createCharge
+  X-Pikopod-Rule: reference-required
+
+{ "error": { "code": "parameter_missing", "message": "reference is required" } }
+```
+
+That run had a second rule, `reference-required`, with `"body": { "reference": "absent" }`. The fork starts from an empty store, so a rule that depends on stored state, such as `exists_in_store`, only fires against the served sandbox.
+
+## Refused at load
+
+A rule naming a route, an event or an example the spec does not declare is refused when the sandbox loads, and the error names the rule:
+
+```text
+error: rule ghost names a route the spec does not declare: POST /refunds is not an operation in this sandbox's spec, and a rule cannot fire on a route the sandbox would not serve → use the method and path template of a declared operation → https://github.com/pikopod/pikopod/blob/main/docs/config-reference.md#rules
+```
+
+Rules replay byte for byte under the same seed, like everything else the sandbox answers, and the parity suite holds a transcript that proves it.

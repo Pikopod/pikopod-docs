@@ -11,7 +11,7 @@ Talks only to the local sandbox control plane, so no flag can ever name producti
 
 | Flag | Meaning |
 |---|---|
-| `--kind <kind>` | `error` (default), `latency`, `hang`, `slow_body`, `rate_limit`, `connection_reset`, `malformed_response`, `wrong_content_length`, `duplicate_webhook`, `drop_webhook`, `reorder_webhook`, `delay_webhook`. |
+| `--kind <kind>` | `error` (default), `latency`, `hang`, `slow_body`, `rate_limit`, `connection_reset`, `empty_response`, `random_data_then_close`, `malformed_response`, `wrong_content_length`, `duplicate_webhook`, `drop_webhook`, `reorder_webhook`, `delay_webhook`. |
 | `--method <METHOD>` | HTTP method of the target operation. Required for non-webhook kinds. |
 | `--path <template>` | Path template of the target operation, as in the spec. Required for non-webhook kinds. |
 | `--status <int>` | Status for `error`. Default 500. `rate_limit` forces 429. |

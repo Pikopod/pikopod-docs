@@ -88,3 +88,7 @@ pikopod chaos examplepay --kind error --status 503 --method POST --path /charges
 ```
 
 See [Faults](/sandbox/faults).
+
+## When the failure depends on the request
+
+A mode and a fault answer every matching request the same way. For "answer 422 when this reference already exists", write a [rule](/sandbox/rules).

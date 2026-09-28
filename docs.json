@@ -80,6 +80,7 @@
               "sandbox/running",
               "sandbox/faults",
               "sandbox/modes",
+              "sandbox/rules",
               "sandbox/webhooks",
               "sandbox/request-journal",
               "sandbox/recordings-tier",

@@ -38,7 +38,7 @@ A fault rule:
 }
 ```
 
-`kind` is one of `error`, `latency`, `hang`, `slow_body`, `rate_limit`, `connection_reset`, `malformed_response`, `wrong_content_length`, `duplicate_webhook`, `drop_webhook`, `reorder_webhook`, `delay_webhook`. Non-webhook kinds need `method` and `path` (the path template as in the spec). `rate_limit` is armed as an `error` with status `429`; `error` with no status becomes `500`. `probability` defaults to `1`. `body` (a JSON object or array) and `headers` are optional and apply to `error`; without `body` the fault answers with the spec's declared example for that status when there is one, else no body. Without `method` and `path` the server answers `400 {"message":"method and path are required"}`. See [Faults](/sandbox/faults).
+`kind` is one of `error`, `latency`, `hang`, `slow_body`, `rate_limit`, `connection_reset`, `empty_response`, `random_data_then_close`, `malformed_response`, `wrong_content_length`, `duplicate_webhook`, `drop_webhook`, `reorder_webhook`, `delay_webhook`. Non-webhook kinds need `method` and `path` (the path template as in the spec). `rate_limit` is armed as an `error` with status `429`; `error` with no status becomes `500`. `probability` defaults to `1`. `body` (a JSON object or array) and `headers` are optional and apply to `error`; without `body` the fault answers with the spec's declared example for that status when there is one, else no body. Without `method` and `path` the server answers `400 {"message":"method and path are required"}`. See [Faults](/sandbox/faults).
 
 ### Requests journal
 
