@@ -111,6 +111,8 @@ That run had a second rule, `reference-required`, with `"body": { "reference": "
 
 ## Refused at load
 
+A rule can also supply what the spec left out. When a provider requires a field its spec does not mark `required`, a rule with `"body": { "reference": "absent" }` answering the provider's real 4xx makes the sandbox refuse the way the provider does.
+
 A rule naming a route, an event or an example the spec does not declare is refused when the sandbox loads, and the error names the rule:
 
 ```text

@@ -78,6 +78,7 @@
               "sandbox/importing",
               "sandbox/docs-url-import",
               "sandbox/running",
+              "sandbox/responses",
               "sandbox/faults",
               "sandbox/modes",
               "sandbox/rules",

@@ -1,0 +1,84 @@
+---
+title: Responses
+description: Where every value in a sandbox response comes from, in what order, and how to see it.
+---
+
+A sandbox response is built from the spec, never invented. When the spec says nothing about a value, the sandbox falls back through a fixed list of sources and tells you which one it used. The point is that a client which reads the body, not just the status, meets values it would accept from the real provider.
+
+## Source order
+
+For every field in a response, the first source that applies wins:
+
+1. **The request.** A field the caller sent with the same name is echoed back. `amount: 5000` in the request is `amount: 5000` in the response.
+2. **The spec's `example` or `default`** on that property.
+3. **An `enum` member** declared for the property.
+4. **A `format`**: `date-time`, `email`, `uuid`, `uri` and the rest produce a value of that shape.
+5. **A naming convention**, listed below.
+6. **A seeded random value.** A dictionary word for strings, a number in range, a coin flip for booleans.
+
+Every choice is deterministic under the sandbox seed, so the same request on the same sandbox answers the same bytes.
+
+## Conventions
+
+Applied only when the spec, the request, an example, an enum or a format has not already decided the value. Names are matched after converting `camelCase` to `snake_case`, so `createdAt` and `created_at` are the same field.
+
+| Field name | Value |
+|---|---|
+| `status`, `success`, `ok`, `succeeded`, `valid` (boolean) | `true` on a 2xx, `false` on a 4xx or 5xx |
+| `message` | The response's declared description; on an error with no description, the reason phrase |
+| `*_at`, `*_date`, `*_time`, `timestamp`, `created`, `updated`, `modified` | An ISO 8601 timestamp from the virtual clock. `created*` survives a replace; `updated*` never precedes it |
+| `id`, `reference`, `ref`, `code`, `token`, `key`, `*_id`, `*_code`, `*_ref`, `*_token`, `*_key` | A prefixed token from the seed: `ref_…`, `cus_…` for `customer_code`, `acc_…` for `access_token` |
+| `url`, `uri`, `link`, `href`, `*_url` | `https://<sandbox>.test/…` |
+| `domain` | `test` |
+| `currency` | `USD` |
+| `amount`, `total`, `price`, `fee`, `balance` | A seeded integer in minor units, 100 to 100000 |
+| `quantity`, `count`, `*_count` | A seeded integer, 1 to 100 |
+
+The `id` of a created resource is the key the store filed it under, so reading it back by that id works. When the spec types `id` as an integer, the key is numeric.
+
+## Validation
+
+`required` fields and declared types on the request schema are enforced on create and modify, through `$ref`. Two fields are never required on input: `id`, which the sandbox assigns, and any property the spec marks `readOnly: true`. When the spec declares nothing, nothing is enforced and the sandbox does not invent a requirement; a [rule](/sandbox/rules) can supply it.
+
+## Seeing where a value came from
+
+`requests --explain` prints one `synth` line per field the sandbox had to choose:
+
+```bash
+pikopod requests examplepay --explain POST /charges --body '{"amount":5000,"currency":"usd"}'
+```
+
+```text
+replaying POST /charges against a fork of examplepay (seed b94da5e5e03b338b) — no real state is touched
+
+  auth       sending the issued credential in authorization
+  faults     no armed fault fired
+  route      matched createCharge
+  auth       declared auth satisfied
+  operation  kind=create resource=/charges
+  synth      amount ← convention amount
+  synth      currency ← convention currency
+  synth      id ← convention id_
+  synth      status ← enum
+  synth      id ← store key charges_1
+
+→ 201
+  Content-Type: application/json; charset=utf-8
+  Etag: "0"
+  X-Pikopod-Operation: createCharge
+
+{"amount":5000,"currency":"usd","id":"charges_1","status":"success"}
+```
+
+The request fields won over the conventions for `amount` and `currency`, `status` came from the spec's enum, and the store key replaced the synthesised `id` so the resource can be read back.
+
+## The realism line
+
+`import` and `sandbox list` print how many response fields would still fall through to a random word:
+
+```text
+sandbox examplepay registered (sbx_b578c3e83fd3ff43, 4 endpoints)
+responses: 0 field(s) synthesised without spec, example or convention
+```
+
+A spec with hundreds of undocumented string fields prints a large number and the first three names. The number goes down as the spec gains examples, as rules supply values, and as the sandbox learns from recorded traffic. It is the first measure of how truthful a sandbox is.
