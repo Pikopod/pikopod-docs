@@ -26,6 +26,28 @@ When `--spec` points at an HTML page rather than a spec, pikopod climbs a ladder
 
 Rungs 1 to 4 are deterministic and need no key. Only if all four miss does pikopod reach rung 5, and with no key configured it stops and tells you so rather than degrading quietly.
 
+## What each page may contribute
+
+When the site publishes an `llms.txt` index, every indexed page is classed by its URL before any budget applies, and the class decides what the model may take from it:
+
+| Class | URL contains | May contribute |
+|---|---|---|
+| `reference` | `api-reference`, `/reference`, `/endpoints`, `/api/` | Endpoints, parameters, request and response fields, status codes, examples, auth schemes |
+| `webhook` | `webhook`, `event-types`, `/events` | Webhook events and payloads |
+| `context` | anything else: guides, limits, channel lists, flows | Enums, limits, descriptions, webhook payloads. Never an endpoint |
+
+Reference and webhook pages are never dropped by the index cap; only context pages are capped, at 64. An endpoint the model wrote from a context page alone is dropped after extraction and named in the output, so a "supported channels" guide cannot invent a call the reference never documents. When a site has no reference pages at all, every page may define endpoints.
+
+Every extracted operation carries `x-pikopod-source`, the page it came from. After the batched extraction, any reference page that mentions an HTTP method but ended up on no operation is sent to the model again on its own, up to twelve pages per import, and the output says how many were retried and how many came back with an endpoint:
+
+```text
+  reference pages: 19, endpoints: 15, retried 5 page(s) alone, recovered 5
+```
+
+A reference page that still yields nothing is a page the model could not read as an endpoint. The count tells you the spec is short by that much before you serve it.
+
+Example bodies shown in the documentation become `example` values in the spec, on the media type and on the fields, so the sandbox answers with the provider's own sample values instead of synthesised ones. The model is told to emit every documented auth scheme by its exact header or mechanism, per-operation `security` where operations differ, and required non-auth headers as header parameters. A `servers` entry pointing at the documentation site itself is discarded; the base URL that matters is the upstream target in `pikopod.yaml`.
+
 The linked-document rungs deliberately have no same-host restriction, because documentation sites legitimately host their spec on another domain. If your threat model includes SSRF from an untrusted docs page, fetch the spec yourself and pass a local path. See [Security](/operations/security#importing-from-a-documentation-url-fetches-more-than-one-page).
 
 ## A model-written contract is a draft
