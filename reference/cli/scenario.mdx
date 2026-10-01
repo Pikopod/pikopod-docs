@@ -8,10 +8,10 @@ Names resolve to archetypes first, then to saved packs. Packs are looked up in `
 ## scenario list
 
 ```text
-pikopod scenario list <sandbox> [-v]
+pikopod scenario list <sandbox> [-v] [--format text|json]
 ```
 
-Which archetypes bind to this sandbox's API, with the reason for each that does not, plus saved packs. `-v` shows which operations each archetype bound to. Works offline. See [Archetypes](/scenarios/archetypes).
+Which archetypes bind to this sandbox's API, with the reason for each that does not, plus saved packs. `-v` shows which operations each archetype bound to. `--format json` prints the same payload the MCP `scenario_list` tool returns: `archetypes` with `applicable` and `reason`, `packs` and `endpoints`. Works offline. See [Archetypes](/scenarios/archetypes).
 
 ## scenario check
 
