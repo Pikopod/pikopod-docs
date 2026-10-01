@@ -11,6 +11,15 @@ All control responses are JSON with `content-type: application/json; charset=utf
 
 Traffic to a sandbox goes to `/<name>/...`. The control plane lives under `/_pikopod/sandboxes/<name>/`.
 
+### Rules
+
+| Method | Path | Body | Response |
+|---|---|---|---|
+| `GET` | `/_pikopod/sandboxes/<name>/rules` | | `{"rules": {"version": n, "rules": [...]}}`, the set the running sandbox is using |
+| `PUT` | `/_pikopod/sandboxes/<name>/rules` | A rule set, `{"version": n, "rules": [...]}` | `200` with the set now live, or `400` naming the rule the spec refuses |
+
+`PUT` replaces the live set at once and does not write the rules file; `pikopod rule add` and `rule drop` write the file and then push it here, so the file stays the source of truth across restarts. See [Rules](/sandbox/rules).
+
 ### Faults
 
 | Method | Path | Body | Response |

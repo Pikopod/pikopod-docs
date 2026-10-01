@@ -163,6 +163,7 @@
                   "reference/cli/up",
                   "reference/cli/mode",
                   "reference/cli/chaos",
+                  "reference/cli/rule",
                   "reference/cli/webhook",
                   "reference/cli/requests",
                   "reference/cli/reproduce"

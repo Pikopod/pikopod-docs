@@ -1,0 +1,77 @@
+---
+title: pikopod rule
+description: List, add, drop and check the rules a sandbox answers by.
+---
+
+Rules live beside the imported spec in `<data_dir>/apis/<sandbox>.rules.json` and load with it. These commands edit that file, validate every change against the spec, and apply it to a running sandbox at once. See [Rules](/sandbox/rules) for what a rule can say.
+
+## rule list
+
+```text
+pikopod rule list <sandbox>
+```
+
+```text
+ID                WHEN                                               RESPOND   PROVENANCE  VERSION
+unique-reference  POST /charges when body.reference exists_in_store  422 body  manual      1
+always-503        POST /charges                                      503       manual      2
+2 rule(s), set version 2
+```
+
+One row per rule in file order, which is the order they are consulted. `VERSION` is the set version the rule was first saved in. An empty set prints `no rules on <sandbox>`.
+
+## rule add
+
+```text
+pikopod rule add <sandbox> <file>
+```
+
+The file is YAML or JSON holding one rule or `rules: [...]`. Every rule is validated against the spec before anything is written: the route must be declared, an `emit` event must be declared, an `example` status must have an example, and ids must be unique. A refusal names the rule and writes nothing.
+
+```bash
+pikopod rule add examplepay unique-reference.yaml
+```
+
+```text
+added unique-reference (set version 1)
+saved; applies when `pikopod up` serves examplepay
+```
+
+When `pikopod up` is serving the sandbox, the new set is pushed to it and the last line reads `applied to the running sandbox examplepay`. A rule the spec cannot honour is refused by name with exit `2`:
+
+```text
+error: rule ghost names a route the spec does not declare: POST /refunds is not an operation in this sandbox's spec, and a rule cannot fire on a route the sandbox would not serve → use the method and path template of a declared operation → https://github.com/pikopod/pikopod/blob/main/docs/config-reference.md#rules
+```
+
+`provenance` defaults to `manual` when the file omits it.
+
+## rule drop
+
+```text
+pikopod rule drop <sandbox> <id>
+```
+
+```text
+dropped always-503 (set version 3)
+saved; applies when `pikopod up` serves examplepay
+```
+
+An unknown id is refused by name.
+
+## rule check
+
+```text
+pikopod rule check <sandbox>
+```
+
+Reports rules that shadow the operation unconditionally, and rules that can never fire: a rule behind an unconditional one on the same operation, a rule with the same conditions as an earlier one, or a state condition on a resource type no operation stores. Exit `0` when clean, `1` when there is anything to report, `2` when the set cannot load.
+
+```text
+shadows      always-503           fires on every POST /charges, so the declared 201 response is never served by the operation
+
+1 problem(s) in 2 rule(s) on examplepay — exit 1
+```
+
+```text
+no problems in 1 rule(s) on examplepay
+```

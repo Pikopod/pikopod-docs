@@ -82,6 +82,43 @@ State conditions read the `state` a resource carries in the store, which a rule'
 
 `provenance` is `manual` for a rule you wrote, `promoted:<fingerprint>` for one promoted from an observed divergence, and `imported:<fingerprint>` for one that arrived in an incident bundle. `version` is stamped when the rule is first saved, and the file's `version` advances on every save.
 
+## Managing rules
+
+You can edit the file by hand, or let `pikopod rule` do it and validate every change against the spec first. A rule file is one rule, or `rules: [...]`, in YAML or JSON:
+
+```yaml
+id: unique-reference
+when:
+  method: POST
+  path: /charges
+  body:
+    reference: exists_in_store
+respond:
+  status: 422
+  body:
+    error:
+      code: reference_taken
+      message: a charge with this reference already exists
+```
+
+```bash
+pikopod rule add examplepay unique-reference.yaml
+pikopod rule list examplepay
+```
+
+```text
+added unique-reference (set version 1)
+saved; applies when `pikopod up` serves examplepay
+```
+
+```text
+ID                WHEN                                               RESPOND   PROVENANCE  VERSION
+unique-reference  POST /charges when body.reference exists_in_store  422 body  manual      1
+1 rule(s), set version 1
+```
+
+When `pikopod up` is serving the sandbox, `add` and `drop` push the new set to it at once. `rule check` tells you about a rule that fires on every request to an operation, so its declared success is never served, and about rules that can never fire. See [`pikopod rule`](/reference/cli/rule).
+
 ## Seeing which rule fired
 
 `requests --explain` replays a request against a fork and names the rule:
