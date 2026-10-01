@@ -44,7 +44,7 @@ The sandbox is where you rehearse. The agent is the smoke detector. Replay is th
 
 One config file, one `data_dir`, one command. `pikopod up` starts two listeners in one process: the sandbox on `:4600` and the agent on `:4700`. They share the data directory and fail independently. If the sandbox listener dies, the message is loud and the agent keeps serving. Your production traffic does not depend on the sandbox being up.
 
-`up` always starts both listeners. The spec watcher is also part of `up`, not a separate command, and arms per upstream whenever `spec_source` is set. Recordings made by the agent feed the sandbox's replay tier only when you ask for it with `--recordings-fallback` on `import`, never silently.
+`up` always starts both listeners. The spec watcher is also part of `up`, not a separate command, and arms per upstream whenever `spec_source` is set. Recordings made by the agent feed the sandbox's replay tier only when you ask for it with `--recordings-fallback` on `import`, never silently. They also score it: `pikopod agent truthfulness` says how much of what the provider sent the sandbox reproduces. See [Truthfulness](/observe/truthfulness).
 
 ```mermaid
 flowchart LR

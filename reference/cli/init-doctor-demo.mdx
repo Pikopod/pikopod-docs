@@ -42,4 +42,13 @@ Any failing check prints its reason under a `✗` and the command exits `2`. Run
 pikopod demo
 ```
 
-Zero config. Starts a fake provider in-process, sends traffic through the agent, silently changes the provider's responses, and prints the alerts. Everything happens in a temporary directory that is removed on exit. Takes about a second.
+Zero config. Starts a fake provider in-process, sends traffic through the agent, silently changes the provider's responses, and prints the alerts. It ends by scoring a sandbox built from the fake provider's spec against what that provider really sent:
+
+```text
+⑥ The sandbox built from the provider's spec, scored against what the provider really sent:
+   /status wrong 35× (sandbox source: enum)
+   /fee_bearer wrong 10× (sandbox source: not served)
+truthfulness: 85% over 50 recorded responses on 1 endpoint(s) (150 leaves shape-only)
+```
+
+See [Truthfulness](/observe/truthfulness). Everything happens in a temporary directory that is removed on exit. Takes about a second.

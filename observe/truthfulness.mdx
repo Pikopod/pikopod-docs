@@ -1,0 +1,77 @@
+---
+title: Truthfulness
+description: One number for how much of what the real provider sent the sandbox reproduces, scored from your own recordings.
+---
+
+A sandbox built from a spec is a claim about what the provider will say. The agent records what the provider actually said. `agent truthfulness` replays those recordings against a fresh copy of the sandbox and scores the answers, leaf by leaf, so the claim has a number next to it.
+
+```bash
+pikopod agent truthfulness examplepay
+```
+
+```text
+GET /charges                                  74%  (31 leaves over 1 response(s); 6 shape-only)
+GET /charges/{id}                              0%  (21 leaves over 3 response(s); sandbox answered 404 for 3)
+POST /charges                                 78%  (36 leaves over 6 response(s); 6 shape-only)
+worst:
+  /livemode                      6×  livemode ← not served
+  /status                        2×  status ← enum
+  /0/livemode                    1×  livemode ← not served
+truthfulness: 58% over 10 recorded responses on 3 endpoints (12 leaves shape-only)
+```
+
+Nothing is written. The sandbox you serve is not touched; the replay runs against a throwaway copy with the same seed.
+
+## The scoring rule
+
+Every recorded JSON response is replayed as the request that produced it, with the recorded request body and the sandbox's own credential. The sandbox's answer is then compared with the recording:
+
+- **The status is one leaf.** `201` recorded and `201` served reproduces it.
+- **Every scalar field of the body is one leaf**, addressed by JSON pointer, so `/data/items/0/amount` is a leaf and arrays score element by element. A leaf reproduces when the sandbox serves the same path with the same type and, where the recording kept a readable value, the same value.
+- **A redacted leaf is scored on shape only.** The recorder tokenizes identifiers and drops strings it cannot classify before anything reaches disk, so the real value is gone. Such a leaf reproduces when the sandbox serves the path with the right type, and the per-endpoint line counts it as `shape-only` so you can see how much of the score rests on shape alone. Fields listed as [volatile](/observe/volatile-fields) are treated the same way.
+- **A leaf the sandbox serves that the provider did not send counts against it.** An invented field is a lie the client would read.
+- **A `404` where the provider answered scores zero** for that response, and the endpoint is listed as unanswered. A fresh sandbox has not stored the resource your recorded `GET` reads, so this is the usual reason a read endpoint scores `0%` on day one.
+
+The percentage is reproduced leaves over compared leaves, per endpoint and in total. The `worst` list names the three fields that failed most often and, for each, where the sandbox got its value: `enum`, `convention amount`, `example`, or `not served` when the sandbox never produced the field at all. Those are the same sources `requests --explain` prints, so the fix is usually visible in the line: an `example` in the spec, a [rule](/sandbox/rules), or a recording the sandbox should replay.
+
+## Three places it shows
+
+- `pikopod agent truthfulness <upstream>`, with `--format json` for the full breakdown.
+- `pikopod agent status`, as a `truthfulness` block per upstream, scored over the most recent 200 recordings:
+
+```json
+{
+  "truthfulness": {
+    "examplepay": {
+      "endpoints": 3,
+      "percent": 58,
+      "responses": 10
+    }
+  }
+}
+```
+
+- The end of `pikopod demo`, scored over the demo's own recordings:
+
+```text
+⑥ The sandbox built from the provider's spec, scored against what the provider really sent:
+   /status wrong 35× (sandbox source: enum)
+   /fee_bearer wrong 10× (sandbox source: not served)
+truthfulness: 85% over 50 recorded responses on 1 endpoint(s) (150 leaves shape-only)
+```
+
+The demo's provider mutates `status` to a value outside the spec's enum and adds a `fee_bearer` field halfway through, which is what the number reports.
+
+## Before you have production traffic
+
+The number needs responses the provider really sent. Without any, the command exits `2` and says so:
+
+```text
+error: no recordings for examplepay: the truthfulness number needs responses the real provider sent, and none are on disk → point your app at the agent (http://127.0.0.1:4700/examplepay) and run your tests once, then retry → https://github.com/pikopod/pikopod/blob/main/docs/config-reference.md#data_dir
+```
+
+On day zero, point the agent at the provider's own test environment, run your integration tests through it once, and score. That is a few minutes of work and it tells you how far the spec alone gets you before a single real customer request is involved.
+
+## Reading the number
+
+A high number means a client that reads bodies, not just statuses, meets the values it would meet in production. A low number is a list of specific fields, each with the source the sandbox used, in the order they matter. The number only goes up as the spec gains examples, as rules supply values, and as the sandbox learns to replay what it has recorded.

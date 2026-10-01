@@ -9,7 +9,7 @@ description: status, report and inspect. What the agent has seen, learned, and w
 pikopod agent status
 ```
 
-Reads `/healthz` from the running agent and prints it as JSON: requests proxied, upstream errors, recordings written and dropped, observer panics, events emitted, alert delivery health, the number of tracked fingerprints, and every baseline family with its sample count and whether it is warmed up. With a spec watcher armed, a `spec_watch` block reports each source's last check and last error. Needs `pikopod up`. See [Control plane](/reference/control-plane#health) for the fields.
+Reads `/healthz` from the running agent and prints it as JSON: requests proxied, upstream errors, recordings written and dropped, observer panics, events emitted, alert delivery health, the number of tracked fingerprints, and every baseline family with its sample count and whether it is warmed up. With a spec watcher armed, a `spec_watch` block reports each source's last check and last error. Every upstream with recordings gets a `truthfulness` block: how much of what the provider sent the linked sandbox reproduces, over the most recent 200 recordings. See [Truthfulness](/observe/truthfulness). Needs `pikopod up`. See [Control plane](/reference/control-plane#health) for the fields.
 
 ## report
 

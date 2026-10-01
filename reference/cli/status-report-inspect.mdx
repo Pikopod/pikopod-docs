@@ -9,7 +9,7 @@ description: Health of the running agent, the endpoint inventory, and stored rec
 pikopod agent status
 ```
 
-Reads `/healthz` from the running agent and prints the JSON payload: traffic counters, recordings written and dropped, observer panics, alert delivery health, tracked fingerprints, every baseline family with its warmup state, and the spec watcher's health when armed. Needs `pikopod up`. Fields are listed under [Control plane](/reference/control-plane#health).
+Reads `/healthz` from the running agent and prints the JSON payload: traffic counters, recordings written and dropped, observer panics, alert delivery health, tracked fingerprints, every baseline family with its warmup state, and the spec watcher's health when armed, plus a `truthfulness` block per upstream that has recordings, scored over the most recent 200. Needs `pikopod up`. Fields are listed under [Control plane](/reference/control-plane#health); the block is described under [Truthfulness](/observe/truthfulness).
 
 ## report
 

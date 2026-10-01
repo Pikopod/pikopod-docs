@@ -115,6 +115,7 @@
               "observe/contract",
               "observe/state-machine",
               "observe/replay-gate",
+              "observe/truthfulness",
               "observe/inspecting"
             ]
           },
@@ -191,7 +192,8 @@
                   "reference/cli/contract",
                   "reference/cli/spec-update",
                   "reference/cli/volatile",
-                  "reference/cli/replay"
+                  "reference/cli/replay",
+                  "reference/cli/truthfulness"
                 ]
               },
               {

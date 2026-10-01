@@ -1,0 +1,29 @@
+---
+title: pikopod agent truthfulness
+description: Score the sandbox linked to an upstream against the responses the real provider sent.
+---
+
+```text
+pikopod agent truthfulness <upstream> [--format text|json]
+```
+
+Replays every JSON recording for `<upstream>` against a fresh copy of the sandbox linked to it and scores each answer: the status, then every scalar leaf of the body. Prints one line per endpoint, the three fields that failed most often with the source the sandbox used for each, and the total. See [Truthfulness](/observe/truthfulness) for the scoring rule.
+
+```text
+GET /charges                                  74%  (31 leaves over 1 response(s); 6 shape-only)
+GET /charges/{id}                              0%  (21 leaves over 3 response(s); sandbox answered 404 for 3)
+POST /charges                                 78%  (36 leaves over 6 response(s); 6 shape-only)
+worst:
+  /livemode                      6×  livemode ← not served
+  /status                        2×  status ← enum
+  /0/livemode                    1×  livemode ← not served
+truthfulness: 58% over 10 recorded responses on 3 endpoints (12 leaves shape-only)
+```
+
+The sandbox is the one whose entry names `<upstream>`, or the sandbox with the same name. Fields listed under the upstream's `volatile_fields` are scored on shape only. Works offline; nothing is written.
+
+| Flag | Default | Meaning |
+|---|---|---|
+| `--format` | `text` | `json` prints `responses`, `endpoints`, `compared`, `reproduced`, `shapeOnly`, `percent`, `perEndpoint`, `worst` and `unanswered`. |
+
+Exits `0` after printing, whatever the number. Exits `2` with the way to get recordings when there are none for `<upstream>`, and when no sandbox is linked to it.
