@@ -72,6 +72,19 @@ error: no recordings for examplepay: the truthfulness number needs responses the
 
 On day zero, point the agent at the provider's own test environment, run your integration tests through it once, and score. That is a few minutes of work and it tells you how far the spec alone gets you before a single real customer request is involved.
 
+## The second run
+
+The first number is the spec alone. Once recordings exist for the upstream, the sandbox answers from them before the spec (see [Precedence](/sandbox/precedence)), and the same command scores that:
+
+```text
+GET /charges                                 100%  (31 leaves over 1 response(s); 6 shape-only)
+GET /charges/{id}                            100%  (18 leaves over 3 response(s); 3 shape-only)
+POST /charges                                100%  (36 leaves over 6 response(s); 6 shape-only)
+truthfulness: 100% over 10 recorded responses on 3 endpoints (15 leaves shape-only)
+```
+
+The same ten recordings scored 58% against the spec alone. The reads that answered 404 now serve the recorded resource, and the creates carry the provider's `livemode`. A sandbox imported before any traffic existed switches to recordings the first time you run `pikopod import <name> --update` after the agent has recorded some.
+
 ## Reading the number
 
 A high number means a client that reads bodies, not just statuses, meets the values it would meet in production. A low number is a list of specific fields, each with the source the sandbox used, in the order they matter. The number only goes up as the spec gains examples, as rules supply values, and as the sandbox learns to replay what it has recorded.

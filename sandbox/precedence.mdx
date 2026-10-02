@@ -1,0 +1,134 @@
+---
+title: Precedence
+description: Where a sandbox answer comes from, in order. Stored state, then the provider's recorded responses, then the spec.
+---
+
+Every request a sandbox answers goes through the same order, after auth, faults, the route and any [rules](/sandbox/rules):
+
+1. **A resource the sandbox itself stored.** Reads, lists, modifies and deletes of something the sandbox created or seeded are answered from its store. What you created is what you read back.
+2. **A recording of the linked upstream.** When the agent has recorded the real provider answering the same method and path template with the same request shape, that recorded response is the answer. The provider's ids, envelopes, pagination fields and error bodies come from the provider.
+3. **The spec.** Only when neither holds does the sandbox synthesise a response from the spec, in the [source order](/sandbox/responses) that page describes.
+
+Recordings answer first as soon as they exist for the upstream the sandbox is linked to. Nothing is on silently: the mode is set at import, printed, and shown by `sandbox list`.
+
+```bash
+pikopod import examplepay --spec ./examplepay.spec.json --seed docs
+```
+
+```text
+sandbox examplepay registered (sbx_2dd2bc3da4899abd, 4 endpoints)
+responses: 0 field(s) synthesised without spec, example or convention
+recordings: first (10 recorded responses for examplepay answer before the spec)
+serve it with `pikopod up` → http://127.0.0.1:4600/examplepay/...
+test credential (send it the way the spec's auth scheme expects, e.g. the Authorization header):
+  pikopod_sbx_test_cd407f549348ce704a784a71a99566ddb44dc1394cde3354
+```
+
+## The three modes
+
+| `--recordings` | What recordings do |
+|---|---|
+| `first` | Answer before the spec, as above. The default when recordings exist for the upstream at import time. |
+| `fallback` | Answer only paths the spec does not declare. A declared route is never shadowed. |
+| `off` | Never consulted. The default when no recordings exist yet. |
+
+`pikopod import <name> --update` re-evaluates the default, so a sandbox imported on day one switches to `first` the first time you refresh it after traffic has been recorded. Pass `--recordings off` to keep it off on purpose.
+
+## A create keeps the store consistent
+
+A create always runs the operation, so what it stores can be read back. When a recording matches the create, the recorded response is the template the stored resource is completed from: the provider's fields and envelope, with the `id` rewritten to the store key. Fields the request sent win over the recording, the way they win over the spec.
+
+```bash
+pikopod requests examplepay --explain POST /charges --body '{"amount":1500,"currency":"usd"}'
+```
+
+```text
+replaying POST /charges against a fork of examplepay (seed docs) — no real state is touched
+
+  auth       sending the issued credential in authorization
+  faults     no armed fault fired
+  route      matched createCharge
+  auth       declared auth satisfied
+  operation  kind=create resource=/charges
+  recordings recorded 201 for POST /charges is the template the created resource is completed from
+  synth      amount ← convention amount
+  synth      currency ← convention currency
+  synth      id ← convention id_
+  synth      status ← enum
+  synth      livemode ← recorded
+  synth      status ← recorded
+  synth      id ← store key charges_1
+
+→ 201
+  Content-Type: application/json; charset=utf-8
+  Etag: "0"
+  X-Pikopod-Operation: createCharge
+  X-Pikopod-Source: recorded
+
+{"amount":1500,"currency":"usd","id":"charges_1","status":"success","livemode":false}
+```
+
+`livemode` is not in the spec. The provider sends it, so the sandbox now does too.
+
+## Matching is hierarchical
+
+One clever hash would miss on real payment traffic where every request carries different amounts and references, so matching degrades in three steps:
+
+1. **exact**: method, path, and the normalized request body hash.
+2. **shape**: method, path template, and the set of body fields, values ignored.
+3. **sequence**: the next unserved recording for that method and template.
+
+Before hashing, a curated list of request fields and headers that churn by nature (idempotency keys, trace ids, signatures, timestamps) is stripped.
+
+A recorded `4xx` or `5xx` is served only on an exact match. A different body may be the reason the provider refused, so a shape-only match never inherits a refusal.
+
+## Every response says where it came from
+
+| Header | Meaning |
+|---|---|
+| `x-pikopod-source` | `recorded` when a recording answered or shaped the response. Absent when the store or the spec did. |
+| `x-pikopod-replay-tier` | `exact`, `shape` or `sequence`. |
+| `x-pikopod-replay-missed-on` | Which fields kept the request from an exact match. |
+| `x-pikopod-replay-closest` | The closest recording considered on a miss. |
+| `x-pikopod-replay-sequence` | The position served from the sequence tier. |
+
+`requests --explain` notes every field a recording supplied with the source `recorded`:
+
+```bash
+pikopod requests examplepay --explain GET /charges/ch_000001
+```
+
+```text
+replaying GET /charges/ch_000001 against a fork of examplepay (seed docs) — no real state is touched
+
+  auth       sending the issued credential in authorization
+  faults     no armed fault fired
+  route      matched getCharge
+  auth       declared auth satisfied
+  operation  kind=read resource=/charges
+  recordings served from the recording (shape tier) before the spec
+  synth      amount ← recorded
+  synth      currency ← recorded
+  synth      id ← recorded
+  synth      livemode ← recorded
+  synth      status ← recorded
+
+→ 200
+  Content-Length: 85
+  Content-Type: application/json; charset=utf-8
+  X-Pikopod-Operation: getCharge
+  X-Pikopod-Replay-Tier: shape
+  X-Pikopod-Source: recorded
+
+{"amount":1500,"currency":"usd","id":"ch_663ul6","livemode":false,"status":"success"}
+```
+
+## What it needs
+
+An agent upstream with the same name, or one linked with `--upstream`, and recordings under `<data_dir>/recordings/<upstream>.ndjson`. When the mode is `first` or `fallback` but no recordings load, `pikopod up` says so and the spec answers until traffic is recorded.
+
+Recordings are the redacted ones. Identifiers are tokens and unclassified strings were dropped before anything reached disk, and a replayed body serves those tokens as they are stored. They are never un-redacted. See [Redaction](/observe/redaction).
+
+## Watch the number move
+
+The same recordings score the sandbox. On the first run the sandbox answers from the spec alone; after recordings answer first, the same command says how much of the provider's traffic the sandbox now reproduces. See [Truthfulness](/observe/truthfulness).

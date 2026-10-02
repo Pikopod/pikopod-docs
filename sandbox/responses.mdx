@@ -9,18 +9,19 @@ A sandbox response is built from the spec, never invented. When the spec says no
 
 For every field in a response, the first source that applies wins:
 
-1. **The request.** A field the caller sent with the same name is echoed back. `amount: 5000` in the request is `amount: 5000` in the response.
-2. **The spec's `example` or `default`** on that property.
-3. **An `enum` member** declared for the property.
-4. **A `format`**: `date-time`, `email`, `uuid`, `uri` and the rest produce a value of that shape.
-5. **A naming convention**, listed below.
-6. **A seeded random value.** A dictionary word for strings, a number in range, a coin flip for booleans.
+1. **A recording.** When the agent has recorded the real provider answering this request, the recorded response is served, or shapes the created resource, before anything below is consulted. Every such field is noted `recorded`. Redaction tokens in it are served as stored, never un-redacted. See [Precedence](/sandbox/precedence).
+2. **The request.** A field the caller sent with the same name is echoed back. `amount: 5000` in the request is `amount: 5000` in the response.
+3. **The spec's `example` or `default`** on that property.
+4. **An `enum` member** declared for the property.
+5. **A `format`**: `date-time`, `email`, `uuid`, `uri` and the rest produce a value of that shape.
+6. **A naming convention**, listed below.
+7. **A seeded random value.** A dictionary word for strings, a number in range, a coin flip for booleans.
 
 Every choice is deterministic under the sandbox seed, so the same request on the same sandbox answers the same bytes.
 
 ## Conventions
 
-Applied only when the spec, the request, an example, an enum or a format has not already decided the value. Names are matched after converting `camelCase` to `snake_case`, so `createdAt` and `created_at` are the same field.
+Applied only when a recording, the request, an example, an enum or a format has not already decided the value. Names are matched after converting `camelCase` to `snake_case`, so `createdAt` and `created_at` are the same field.
 
 | Field name | Value |
 |---|---|

@@ -17,7 +17,7 @@ Registers a sandbox named `<provider>`, served at `/<provider>/` by `pikopod up`
 | `--webhooks <file>` | A YAML or JSON sidecar describing how the provider wraps and signs deliveries, and which calls fire which events. See [Webhooks](/sandbox/webhooks). |
 | `--emit-spec <path>` | Write the spec the import used, fetched or extracted, to this path so it can be reviewed, corrected and committed. |
 | `--upstream <name>` | Link to an agent upstream so its traffic refines this contract. Automatic when the names match. |
-| `--recordings-fallback` | Serve the linked upstream's recordings for requests neither the spec nor admitted traffic can answer. See [Recordings tier](/sandbox/recordings-tier). |
+| `--recordings` | `first`, `fallback` or `off`: the linked upstream's recordings answer before the spec, only for paths the spec does not declare, or never. Default `first` when recordings exist, else `off`; `--update` re-evaluates it. See [Precedence](/sandbox/precedence). |
 | `--update` | Re-import an existing sandbox's spec and refresh the declared-drift pin. Accepts the standing spec-diff findings. |
 
 ## Output

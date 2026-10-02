@@ -46,7 +46,7 @@ The credential is printed at import and by `pikopod sandbox list`. Send it the w
 
 ## Linking to an upstream
 
-When an agent upstream of the same name exists in `pikopod.yaml`, the sandbox is linked automatically. `--upstream <name>` links explicitly. A linked upstream's traffic can refine the contract and feed the recordings tier. See [Contract](/observe/contract) and [Recordings tier](/sandbox/recordings-tier).
+When an agent upstream of the same name exists in `pikopod.yaml`, the sandbox is linked automatically. `--upstream <name>` links explicitly. A linked upstream's traffic can refine the contract, and its recordings answer the sandbox before the spec once they exist; `--recordings first|fallback|off` sets that. See [Contract](/observe/contract) and [Precedence](/sandbox/precedence).
 
 ## Webhooks at import
 
