@@ -23,6 +23,8 @@ Two different things, on two different clocks.
 
 **Incidents.** The upstream answered 5xx, throttled you with a 429, or could not be reached at all. These are facts about one request, so they need no baseline and fire from the very first one. See [Incidents](/observe/incidents).
 
+**Divergence.** The provider answered a request differently from the sandbox built from its own spec: a 422 on a duplicate name the spec never mentions, a 5xx where the sandbox succeeds, a success code the spec does not declare. It needs only the spec and the sandbox, so it fires from the first request. See [Divergence](/observe/divergence).
+
 **Drift.** The shape of a successful response changed: a field vanished, a type changed, a status value you had never seen arrived. This needs a baseline, so it stays quiet for the first 50 samples and 48 hours on purpose. A reference built from five responses has not seen your optional fields yet. See [Drift](/observe/drift) and [Warmup and baselines](/observe/warmup-and-baselines).
 
 Both produce an event with a stable fingerprint, and the fingerprint is the handle you feed back in:
@@ -58,6 +60,7 @@ A spec-diff tool reads what the provider published. Monitoring sees your traffic
 | [Warmup and baselines](/observe/warmup-and-baselines) | How normal is learned, then frozen. |
 | [Drift](/observe/drift) | The eight shape kinds and how they are graded. |
 | [Incidents](/observe/incidents) | The four failure kinds, and why 4xx is opt-in. |
+| [Divergence](/observe/divergence) | What the provider did that the sandbox would not have. |
 | [Alerts](/observe/alerts) | Dedupe, thresholds, Slack, ack and accept. |
 | [Volatile fields](/observe/volatile-fields) | Silencing values that churn by nature, without silencing shape. |
 | [Spec watch](/observe/spec-watch) | Re-fetching the provider's spec and joining it with traffic. |

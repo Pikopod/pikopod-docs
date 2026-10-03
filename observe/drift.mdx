@@ -51,5 +51,6 @@ pikopod scenario from-drift fp_385153d1776c
 - **Values of fields you declared volatile.** Their presence, type and nullability are still checked. See [Volatile fields](/observe/volatile-fields).
 - **Anything on a muted template.**
 - **Anything before warmup.** See [Warmup and baselines](/observe/warmup-and-baselines).
+- **A provider answering differently from the sandbox.** A refusal the spec never mentions is not a shape change. It is a [divergence](/observe/divergence), compared against the sandbox rather than a baseline, so it needs no warmup.
 
 Every event is written to `<data_dir>/events.ndjson` in the [drift event schema](/reference/drift-event-schema), and `pikopod agent incidents --only drift` lists them.

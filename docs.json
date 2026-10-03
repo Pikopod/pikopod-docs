@@ -109,6 +109,7 @@
               "observe/warmup-and-baselines",
               "observe/drift",
               "observe/incidents",
+              "observe/divergence",
               "observe/alerts",
               "observe/volatile-fields",
               "observe/spec-watch",

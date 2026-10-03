@@ -39,6 +39,7 @@ An incident forces its recording to disk regardless of `sampling.rate`. Sampling
 ```bash
 pikopod agent incidents
 pikopod agent incidents --only incidents --since 24h
+pikopod agent incidents --only divergence
 pikopod agent incidents --kind upstream_error --upstream examplepay --format json
 ```
 
@@ -50,7 +51,7 @@ pikopod agent incidents --kind upstream_error --upstream examplepay --format jso
   export: pikopod agent incidents export fp_14835fa32dfb
 ```
 
-`agent incidents` is a reader, not a gate: it exits `0` whether or not it found anything. The `reproducible until` line appears when `retention.max_age_hours` bounds how long the recording stays on disk. `--format json` always carries `total_matching` and `truncated`. See [`pikopod agent incidents`](/reference/cli/incidents).
+`--only` takes `incidents`, `drift` or `divergence`; the third lists what the provider did that the sandbox would not have, see [Divergence](/observe/divergence). `agent incidents` is a reader, not a gate: it exits `0` whether or not it found anything. The `reproducible until` line appears when `retention.max_age_hours` bounds how long the recording stays on disk. `--format json` always carries `total_matching` and `truncated`. See [`pikopod agent incidents`](/reference/cli/incidents).
 
 ## Reproducing one
 

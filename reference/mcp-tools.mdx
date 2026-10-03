@@ -33,7 +33,7 @@ Diff two spec versions as declared drift with a severity per finding. It sees on
 
 ### drift_events
 
-Drift events and incidents the agent recorded for an upstream. Reports only changes observed in traffic that passed warmup.
+Drift events, incidents and divergence events the agent recorded for an upstream. Drift is reported only for traffic that passed warmup; incidents and divergence need no warmup and fire from the first request.
 
 | Argument | Required | Meaning |
 |---|---|---|
@@ -42,7 +42,7 @@ Drift events and incidents the agent recorded for an upstream. Reports only chan
 | `level` | | `ERR`, `WARN` or `INFO` |
 | `limit` | | Max events, default 50 |
 
-`FINDINGS` when events exist. `UNVERIFIABLE` when the upstream has no baselines yet, or when no endpoint has passed warmup, with the samples seen and the gate. `CLEAN` otherwise, naming how many endpoint families are warmed up and how many are still warming. Every result carries a `warmup` block: gate values, per-family samples, and the standing notice that an endpoint with no traffic is invisible.
+`FINDINGS` when events exist. `UNVERIFIABLE` when the upstream has no baselines yet, or when no endpoint has passed warmup, with the samples seen and the gate, and a reminder that incidents and divergence would have been reported regardless. `CLEAN` otherwise, naming how many endpoint families are warmed up and how many are still warming. Every result carries a `warmup` block: gate values, per-family samples, and the standing notice that an endpoint with no traffic is invisible.
 
 ### replay_ci
 

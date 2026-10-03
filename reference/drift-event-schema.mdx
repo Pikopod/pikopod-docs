@@ -42,6 +42,7 @@ The schema is published at `schema/drift-event.schema.json` in the repository. T
 | `level` | string | | `ERR`, `WARN` or `INFO`. |
 | `detail` | string | | Pre-rendered sentence for declared findings. |
 | `note` | string | | Join context, for example that the provider's new spec documents the change. |
+| `category` | string | | On `behaviour_divergence` only: `spec_drift`, `undocumented_rule` or `provider_failure`. |
 
 ## Kinds
 
@@ -66,6 +67,12 @@ Incident kinds describe an exchange that failed. They need no baseline:
 | `upstream_unreachable` | pikopod could not reach the upstream and returned its own 502. |
 | `rate_limited` | The upstream answered 429. |
 | `client_error` | The upstream answered 4xx. Opt-in. |
+
+One kind compares the provider with the sandbox built from its spec. It needs no baseline either:
+
+| Kind | Meaning |
+|---|---|
+| `behaviour_divergence` | The provider answered a recorded request differently from the sandbox. `before` is the sandbox's status, `after` the provider's, `field` the request field names that were present (never values), and `category` says which way it diverged. See [Divergence](/observe/divergence). |
 
 Declared events carry `declared:<check-id>`, for example `declared:endpoint-removed`, with the check IDs from [Severity](/gate/severity).
 

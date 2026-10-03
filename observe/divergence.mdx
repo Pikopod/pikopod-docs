@@ -1,0 +1,102 @@
+---
+title: Divergence
+description: What the provider did that the sandbox would not have. Needs no baseline, fires from the first request, and is always reproducible.
+---
+
+Drift covers a successful response whose shape changed against a baseline. It says nothing about a provider answering a request differently from the sandbox built from its own spec: a 422 on a duplicate name the spec never mentions, a 5xx where the sandbox succeeds, a success code the spec does not declare. Divergence covers that.
+
+For every exchange the agent records, after redaction, it rebuilds the request and runs it through an ephemeral fork of the linked sandbox, seeded with what the agent already knows: the traffic overlay and the rules. Then it compares the sandbox's answer with the provider's.
+
+```text
+[WARN] pikopod divergence — provider diverged from the sandbox on POST /charges (examplepay)
+undocumented_rule: sandbox answered 201, provider answered 422; request carried body.amount, body.currency, body.reference — reproduce it locally: pikopod reproduce fp_a54f1964b9f6
+fingerprint fp_a54f1964b9f6 · first seen 2026-10-03T09:17:44+01:00 · 1 occurrence(s)
+export: pikopod agent incidents export fp_a54f1964b9f6
+replay it: pikopod reproduce fp_a54f1964b9f6
+```
+
+That alert came from a second create carrying a reference the provider had already seen. The spec declares `201` for the create and nothing about references being unique, so the sandbox said `201` and the provider said `422`.
+
+## What is compared
+
+The status class, the exact status, the error code field and the reason field, in that order. The first difference that can be established decides the category:
+
+| Category | Fires when | Level |
+|---|---|---|
+| `provider_failure` | The provider answered 5xx or 429 where the sandbox did not. | `ERR` |
+| `undocumented_rule` | The provider refused (4xx) what the spec accepts, or answered a declared 4xx with a different error code than the sandbox. | `WARN` |
+| `spec_drift` | The provider answered a success code the spec does not declare, or accepted what the spec refuses. | `WARN` |
+
+A fork that answers `401`, `403`, `404` or `405` is not comparable: the rebuilt request did not reach the operation, usually because it reads a resource the fork never stored. Those are skipped and counted, never scored.
+
+## Redaction is never a match
+
+The agent compares the redacted recording, because that is all it keeps. When the fields the comparison needs were redacted, the result is unverifiable and no event is emitted. Two cases:
+
+- The provider and the sandbox answered the same 4xx, and the error code or reason the provider sent was dropped before it reached disk.
+- The sandbox refused the rebuilt request because a field the redactor dropped was required. The request the fork saw is not the request your app sent.
+
+`/healthz` counts both outcomes alongside the comparisons made:
+
+```json
+{"divergence_checked": 2, "divergence_skipped": 0, "divergence_unverifiable": 0}
+```
+
+## No warmup
+
+Divergence needs only the spec and the sandbox, so it fires from the first request. One alert per fingerprint, on first occurrence, the way declared drift alerts. The fingerprint covers the upstream, method, template, category, the status pair and the request field names that were present. Field names only. A value never reaches a fingerprint, an event or an alert.
+
+## Listing and reproducing
+
+```bash
+pikopod agent incidents --only divergence
+```
+
+```text
+[WARN] divergence behaviour_divergence   POST /charges (examplepay) · 1 occurrence(s) · last 2026-10-03T09:17:44+01:00
+  fp_a54f1964b9f6
+  undocumented_rule: sandbox answered 201, provider answered 422; request carried body.amount, body.currency, body.reference
+  reproduce: pikopod reproduce fp_a54f1964b9f6
+  export: pikopod agent incidents export fp_a54f1964b9f6
+```
+
+```bash
+pikopod reproduce fp_a54f1964b9f6
+```
+
+```text
+reproduced fp_a54f1964b9f6 (examplepay answered 422 on POST /charges) as pikopod-data/scenarios/incident-a54f1964b9f6.yaml
+PASSED — 1 assertion(s) passed; 0 not evaluated
+the failure now happens locally — fix it, then re-run: pikopod scenario check examplepay incident-a54f1964b9f6
+```
+
+`reproduce` arms the provider's real status and body on the route, so the refusal happens on your laptop. It does not yet teach the sandbox the rule itself; a [rule](/sandbox/rules) answering `422` when the reference already exists does that today, and automatic promotion from a divergence is next. A `spec_drift` divergence where the provider accepted what the sandbox refuses has nothing to arm, and `reproduce` says so.
+
+## The event
+
+`kind` is `behaviour_divergence`, `before` is the sandbox's status, `after` the provider's, `field` the request field names, and `category` one of the three above. See the [drift event schema](/reference/drift-event-schema).
+
+```json
+{
+  "schema_version": "2",
+  "fingerprint": "fp_a54f1964b9f6",
+  "upstream": "examplepay",
+  "method": "POST",
+  "endpoint": "/charges",
+  "status_class": "4xx",
+  "kind": "behaviour_divergence",
+  "field": "body.amount,body.currency,body.reference",
+  "before": "201",
+  "after": "422",
+  "first_seen": "2026-10-03T09:13:54.433891+01:00",
+  "last_seen": "2026-10-03T09:13:54.433891+01:00",
+  "occurrences": 1,
+  "level": "WARN",
+  "detail": "sandbox answered 201, provider answered 422; request carried body.amount, body.currency, body.reference",
+  "category": "undocumented_rule"
+}
+```
+
+## Cost
+
+The fork is built once per upstream and reused for a minute, then rebuilt. Each recorded exchange costs one in-process request against it. All of it runs on the observe path, behind the same panic isolation as the rest of the agent, after the response has already been served. The data plane is untouched. See [Data plane safety](/observe/data-plane-safety).

@@ -11,7 +11,7 @@ A reader, not a gate: exits `0` whether or not it found anything, and `2` only w
 
 | Flag | Default | Meaning |
 |---|---|---|
-| `--only incidents\|drift` | both | Narrow to failed exchanges or to shape changes. |
+| `--only incidents\|drift\|divergence` | all | Narrow to failed exchanges, to shape changes, or to answers that diverged from the sandbox. |
 | `--kind <kind>` | | Filter by kind, such as `upstream_error`. |
 | `--upstream <name>` | | Filter by upstream. |
 | `--since <duration>` | | Only events last seen within this window, such as `24h`. |
