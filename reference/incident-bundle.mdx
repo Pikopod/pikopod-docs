@@ -13,7 +13,13 @@ A bundle carries one incident from the host that recorded it to any machine that
   "expires_at": "2026-09-21T10:00:00Z",
   "event": { "schema_version": "2", "fingerprint": "fp_14835fa32dfb", "...": "a drift event" },
   "recording": { "ts": "2026-09-19T10:00:00Z", "method": "POST", "path": "/charges", "status": 503, "...": "a sanitized record" },
-  "contract_version": 0
+  "contract_version": 0,
+  "state": {
+    "type": "/charges",
+    "key": "ch_1ae9go",
+    "attributes": { "amount": 5000, "currency": "usd", "id": "ch_1ae9go", "status": "pending" },
+    "state": "pending"
+  }
 }
 ```
 
@@ -26,6 +32,7 @@ A bundle carries one incident from the host that recorded it to any machine that
 | `event` | The [drift event](/reference/drift-event-schema). |
 | `recording` | The sanitized exchange: method, path, status, redacted headers and bodies. |
 | `contract_version` | The overlay version at the time of the incident, so the reproduction runs at the same contract. `0` when there is no overlay. |
+| `state` | Optional. The resource the recording touched, as the agent last saw it: its collection (`type`), its key (a token), its redacted `attributes` from the most recent successful response for that path, and its `state` when the attributes carry a `status` or `state` string. Present only for a route with a path parameter and only when such a response exists. `import` seeds it and conditions the rule on it. |
 
 ## Producing one
 
@@ -41,9 +48,10 @@ The first writes one bundle. The second writes a JSON array of every incident la
 ```bash
 pikopod reproduce ./incident.json
 pikopod fix ./incident.json --check "go build ./..."
+pikopod agent incidents import ./incident.json
 ```
 
-Both read nothing from the local `data_dir`. An argument is treated as a bundle path when it ends in `.json`, contains a path separator, or exists as a file; a fingerprint always starts with `fp_`, so the two are never confused.
+The first two read nothing from the local `data_dir`. `import` writes to it: the event and recording into the local log, a rule with provenance `imported:<fingerprint>` on the linked sandbox, and the `state` resource into the sandbox's store. See [Incident bundles](/reproduce/incident-bundles#import-it-and-the-local-sandbox-behaves-as-production-did). An argument is treated as a bundle path when it ends in `.json`, contains a path separator, or exists as a file; a fingerprint always starts with `fp_`, so the two are never confused.
 
 ## Safety on the way back in
 

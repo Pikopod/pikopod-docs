@@ -28,11 +28,58 @@ pikopod fix ./incident.json --check "go build ./..."
 
 Both read nothing from the local `data_dir`, and the file keeps working after the origin host's retention has aged the incident out. The bundle records the export time, the origin host, and, when retention is configured, the time the origin will forget the incident.
 
+## Import it, and the local sandbox behaves as production did
+
+`reproduce` runs the pack once. `import` makes the incident part of the local sandbox:
+
+```bash
+pikopod agent incidents import ./incident.json
+```
+
+```text
+event fp_f2fa717d9a02 installed in the local log
+rule imported-f2fa717d9a02 answers GET /charges/{id} with 503 (set version 1); drop it with `pikopod rule drop examplepay imported-f2fa717d9a02`
+saved; applies when `pikopod up` serves examplepay
+seeded /charges ch_1ae9go into examplepay (state pending)
+reproduce: pikopod reproduce fp_f2fa717d9a02
+```
+
+Three things happen, each idempotent, so importing the same bundle twice changes nothing:
+
+1. **The event and its redacted recording land in the local log**, so `agent incidents` lists it and `reproduce <fingerprint>` works here without the file.
+2. **A rule with provenance `imported:<fingerprint>`** answers the recorded route with the recorded status and body. When the bundle carries the resource's state, the rule is conditioned on it, so the sandbox fails the way production did only while that resource is in that state.
+3. **The resource the recording touched is seeded** into the sandbox's store under its token key, with the attributes and state the agent last saw.
+
+Then the sandbox answers that request the way the provider did, and says why:
+
+```bash
+pikopod requests examplepay --explain GET /charges/ch_1ae9go
+```
+
+```text
+replaying GET /charges/ch_1ae9go against a fork of examplepay (seed docs) — no real state is touched
+
+  auth       sending the issued credential in authorization
+  faults     no armed fault fired
+  route      matched getCharge
+  auth       declared auth satisfied
+  rules      rule imported-f2fa717d9a02 fired: GET /charges/{id} when state /charges state_is pending
+
+→ 503
+  Content-Type: application/json; charset=utf-8
+  X-Pikopod-Operation: getCharge
+  X-Pikopod-Rule: imported-f2fa717d9a02
+
+{}
+```
+
+The key is the token from the recording, because that is what the bundle holds; the raw identifier never left the origin host. Drop the rule when the incident is fixed, or keep it as the regression the sandbox always rehearses.
+
 ## Where this fits
 
 In rough order of how often they apply:
 
-1. **Export a bundle** when one developer needs one incident now.
+1. **Export a bundle** when one developer needs one incident now, and **import it** when the local sandbox should keep behaving that way.
 2. **Commit the generated pack** so the path is guarded forever with no recording at all.
 3. **Share `data_dir`** read-only for a team that wants every incident.
 4. **Automate the export** with `--since 24h` in a cron job, attached to an issue or pull request.

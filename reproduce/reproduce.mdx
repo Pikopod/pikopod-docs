@@ -57,9 +57,10 @@ When the agent runs on a host that is not your laptop, export the incident and r
 ```bash
 pikopod agent incidents export fp_14835fa32dfb > incident.json     # on the agent host
 pikopod reproduce ./incident.json                    # anywhere
+pikopod agent incidents import ./incident.json       # and keep behaving that way
 ```
 
-See [Incident bundles](/reproduce/incident-bundles).
+`import` installs the incident locally: the event, a rule that answers as the provider did, and the resource the recording touched, so `reproduce <fingerprint>` lands on the seeded resource and the sandbox keeps the failure after the pack has run. See [Incident bundles](/reproduce/incident-bundles).
 
 ## Shape changes
 

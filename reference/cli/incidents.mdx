@@ -49,4 +49,12 @@ Newest first by last seen. `reproducible until` appears on incidents when retent
 pikopod agent incidents export [fingerprint] [--since <duration>]
 ```
 
-Writes a self-contained bundle to stdout: the event, the already-redacted recording and the contract version. No salt, no token, no configuration. One fingerprint writes one bundle; `--since` writes a JSON array of every incident in the window. See [Incident bundles](/reproduce/incident-bundles) and the [bundle format](/reference/incident-bundle).
+Writes a self-contained bundle to stdout: the event, the already-redacted recording, the contract version and, when known, the state of the resource the recording touched. No salt, no token, no configuration. One fingerprint writes one bundle; `--since` writes a JSON array of every incident in the window. See [Incident bundles](/reproduce/incident-bundles) and the [bundle format](/reference/incident-bundle).
+
+## incidents import
+
+```text
+pikopod agent incidents import <bundle.json>
+```
+
+Installs a bundle into this `data_dir`: the event and its recording into the local log, a rule with provenance `imported:<fingerprint>` on the sandbox linked to the event's upstream that answers the recorded route with the recorded status and body, conditioned on the bundle's resource state when present, and that resource seeded into the sandbox's store. Each step is idempotent; importing twice reports what was already there. Prints the three things it did and the `reproduce` line. Exits `2` when the bundle is refused (wrong schema version, unknown fields, incomplete, over 8 MiB) or when no sandbox is linked to the upstream.
