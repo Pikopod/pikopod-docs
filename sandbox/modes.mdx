@@ -77,6 +77,10 @@ your client did not do what the scenario expects — exit 1
 
 Exit `0` when every step passed, `1` when the client fell short, `2` when no mode is set or the mode's scenario has no verification step. Spacing between requests is judged on wall-clock time, because your client made them in real time. Clear the mode between suites, or the next suite is judged against the last one's requests too.
 
+## From a test
+
+The Go package `pkg/sandboxtest` does the same inside a test, with no `pikopod up`: `New`, `Mode`, run your code, `Verify`. See [Use it from a test](/scenarios/from-a-test).
+
 ## From a coding agent
 
 The same operations are MCP tools: `set_mode`, `mode_verify`, `clear_mode`, and `get_requests` to read the journal itself. See [MCP tools](/reference/mcp-tools).

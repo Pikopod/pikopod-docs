@@ -95,6 +95,7 @@
               "scenarios/archetypes",
               "scenarios/binding",
               "scenarios/running",
+              "scenarios/from-a-test",
               "scenarios/pack-format",
               "scenarios/generated-packs",
               "scenarios/plain-english"

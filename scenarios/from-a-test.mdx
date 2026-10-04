@@ -1,0 +1,80 @@
+---
+title: Use it from a test
+description: Start a sandbox inside your own test, put it into a failure, run your code, and ask whether it did the right thing.
+---
+
+`scenario check` drives pikopod's own requests. A mode lets your tests meet the failure, but it needs `pikopod up` in another terminal. The Go package `pkg/sandboxtest` removes the terminal: one call starts a sandbox from the spec inside the test, in memory, on a random port, and closes it with the test.
+
+```go
+package payments_test
+
+import (
+	"bytes"
+	"net/http"
+	"os"
+	"testing"
+
+	"github.com/pikopod/pikopod/pkg/sandboxtest"
+)
+
+func createCharge(client *http.Client, url string, attempts int) int {
+	status := 0
+	for i := 0; i < attempts; i++ {
+		req, _ := http.NewRequest("POST", url+"/charges", bytes.NewReader([]byte(`{"amount":5000,"currency":"usd"}`)))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Idempotency-Key", "order-77")
+		resp, err := client.Do(req)
+		if err != nil {
+			return 0
+		}
+		resp.Body.Close()
+		status = resp.StatusCode
+		if status < 500 {
+			return status
+		}
+	}
+	return status
+}
+
+func TestClientWithRetriesSurvivesARetryStorm(t *testing.T) {
+	spec, _ := os.ReadFile("testdata/examplepay.spec.json")
+	s := sandboxtest.New(t, spec)
+	s.Mode("retry_storm")
+	if got := createCharge(s.Client(), s.URL(), 5); got != 201 {
+		t.Fatalf("the third attempt succeeds: %d", got)
+	}
+	if res := s.Verify(); !res.Passed() {
+		t.Fatalf("a client that retries passes: %s", res.Summary)
+	}
+}
+```
+
+`retry_storm` refuses the first two creates under one idempotency key with `503` and answers the third. A client that retries gets `201` and `Verify` reports `PASSED`. A client that gives up after the first `503` gets `FAILED`, with the summary naming the matcher that never matched, so the test fails for the right reason.
+
+## The surface
+
+| Call | What it does |
+|---|---|
+| `sandboxtest.New(t, spec, opts...)` | Builds the sandbox from an OpenAPI, Swagger, Postman or GraphQL document and serves it on a random port. Closed when the test ends. |
+| `WithSeed(seed)` | Pins the seed. Default `sandboxtest`, so every run answers the same bytes. |
+| `WithSeedData(items)` | Stores resources before the first request, the way a [seed file](/sandbox/running#seeding) does. |
+| `WithPackDir(dir)` | Lets `Mode` resolve your own scenario packs as well as the archetypes. |
+| `WithWebhookSink(url)` | Where deliveries POST, signed. |
+| `s.URL()`, `s.Credential()`, `s.AuthHeader()` | Where it listens and what it expects. |
+| `s.Client()` | An `*http.Client` that sends the credential the way the spec's auth scheme expects. |
+| `s.Mode(name, binds...)` | Arms a scenario's standing state. Binds are `role=operationId`, like `--bind` on the CLI. |
+| `s.Verify()` | Judges what your code sent against the mode's expectations. `Passed()`, `Status`, `Summary`, `Steps`. |
+| `s.Chaos(Fault{...})` | Arms one fault: `Kind`, `Method`, `Path`, `Status`, `DelayMs`, `Times`, `Per`, `Event`. |
+| `s.Emit(event, data)` | Fires a declared webhook event at the sink. |
+| `s.Requests()` | What your code sent: method, path, status, in order. |
+| `s.Seed(items)`, `s.Reset()`, `s.ClearMode()`, `s.ClearFaults()` | State between tests. `Reset` returns to the seeded state and clears faults, mode and the journal. |
+
+Nothing from pikopod's internals appears in these signatures, so the package can stay stable while the engine moves.
+
+## One sandbox per test
+
+`New` builds a fresh in-memory sandbox each time, so parallel tests never share state or modes. For a long suite that wants one process, `pikopod up` with [forks](/sandbox/running#a-fresh-sandbox-per-test) gives the same isolation over HTTP, and the Jest and pytest helpers use that.
+
+## What it needs
+
+The spec, as bytes. A documentation page is not accepted here; import it once with the CLI and commit the spec it emits with `--emit-spec`. See [Importing from a docs URL](/sandbox/docs-url-import).
