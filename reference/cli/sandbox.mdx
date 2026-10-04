@@ -23,7 +23,19 @@ examplepay           sbx_41d959476a09e5f9  mode=deterministic seed=8eb1bc48ceb2f
   webhooks: 2 declared, 1 triggered, 1 emit-only; envelope: hmac-sha256 in body "signature", key from $EXAMPLEPAY_WEBHOOK_KEY
 ```
 
-A sandbox imported from a documentation page by model extraction is marked `⚠ DRAFT (LLM_EXTRACTED: model-written from prose docs; shapes are best-effort)`. Exits `2` when nothing is registered.
+A seeded sandbox adds `  seeded: N resources`. A sandbox imported from a documentation page by model extraction is marked `⚠ DRAFT (LLM_EXTRACTED: model-written from prose docs; shapes are best-effort)`. Exits `2` when nothing is registered.
+
+## sandbox seed
+
+```text
+pikopod sandbox seed <name> <file>
+```
+
+Stores the resources in a YAML or JSON seed file. Into the running sandbox when `pikopod up` is serving it, otherwise into the store for the next `up`. The items are remembered, so `reset` and forks start from them.
+
+```text
+seeded 1 resource(s) into examplepay; they are served by the next `pikopod up`
+```
 
 ## sandbox reset
 
@@ -31,7 +43,12 @@ A sandbox imported from a documentation page by model extraction is marked `⚠ 
 pikopod sandbox reset <name>
 ```
 
-Clears the sandbox's stored resources. The seed is unchanged, so the same seed replays identically from an empty store. A running `pikopod up` keeps its in-memory journal and webhook state until restarted. The id sequence keeps advancing after a reset; for a byte-identical replay from scratch, register a fresh sandbox with the same seed.
+Returns the sandbox to its seeded state. Through the running server when there is one, which also clears faults, the standing mode, the request journal and idempotency memory; otherwise directly on the store.
+
+```text
+sandbox examplepay cleared — 3 seeded resource(s) restored (seed docs unchanged)
+note: the id sequence keeps advancing after a reset; for a byte-identical replay from scratch, register a fresh sandbox with the same seed
+```
 
 ## sandbox requests
 

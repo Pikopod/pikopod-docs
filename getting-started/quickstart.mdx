@@ -28,10 +28,28 @@ wrote pikopod.yaml — edit the upstreams block, then: pikopod doctor && pikopod
 
 ## 3. Import a spec into a sandbox
 
-`--spec` takes a local file or an `http(s)` URL: OpenAPI 3.x, Swagger 2.0, a Postman collection, a GraphQL schema, or a documentation page. Use your provider's spec URL, or download the small example spec these docs use to follow along exactly:
+`--spec` takes a local file or an `http(s)` URL: OpenAPI 3.x, Swagger 2.0, a Postman collection, a GraphQL schema, or a documentation page. Use your provider's spec URL, or download the small example spec these docs use to follow along exactly.
+
+No config yet? One command serves a sandbox from the spec alone, in a temporary data directory that is removed on exit:
 
 ```bash
 curl -fsSL -o examplepay.spec.json https://raw.githubusercontent.com/pikopod/pikopod/main/docs/demo/examplepay.spec.json
+pikopod up --spec ./examplepay.spec.json
+```
+
+```text
+sandbox examplepay registered (sbx_6932b80316f5d1d5, 4 endpoints)
+responses: 0 field(s) synthesised without spec, example or convention
+serve it with `pikopod up` → http://127.0.0.1:4600/examplepay/...
+test credential (send it the way the spec's auth scheme expects, e.g. the Authorization header):
+  pikopod_sbx_test_cd407f549348ce704a784a71a99566ddb44dc1394cde3354
+pikopod sandbox on http://127.0.0.1:4600  (sandboxes: examplepay) — temporary data dir, removed on exit
+no agent: --spec serves the sandbox only; add an upstream to pikopod.yaml to proxy and record real traffic
+```
+
+To keep the sandbox between runs, and for everything below, register it under `data_dir` instead:
+
+```bash
 pikopod import examplepay --spec ./examplepay.spec.json
 ```
 

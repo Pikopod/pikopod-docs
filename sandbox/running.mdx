@@ -15,6 +15,102 @@ pikopod sandbox on http://127.0.0.1:4600  (sandboxes: examplepay)
 
 Every registered sandbox is served at `http://127.0.0.1:4600/<name>/`. The agent and the sandbox run in one process and fail independently.
 
+## Without a config file
+
+```bash
+pikopod up --spec ./examplepay.spec.json
+```
+
+```text
+sandbox examplepay registered (sbx_6932b80316f5d1d5, 4 endpoints)
+responses: 0 field(s) synthesised without spec, example or convention
+serve it with `pikopod up` → http://127.0.0.1:4600/examplepay/...
+test credential (send it the way the spec's auth scheme expects, e.g. the Authorization header):
+  pikopod_sbx_test_cd407f549348ce704a784a71a99566ddb44dc1394cde3354
+pikopod sandbox on http://127.0.0.1:4600  (sandboxes: examplepay) — temporary data dir, removed on exit
+no agent: --spec serves the sandbox only; add an upstream to pikopod.yaml to proxy and record real traffic
+```
+
+`--spec` serves one sandbox from a temporary data directory, with no `pikopod.yaml` and no agent. `--name`, `--seed`, `--seed-data` and `--port` apply. Ctrl-C removes the directory. Register the sandbox with `pikopod import` when you want it to outlive the process.
+
+## Seeding
+
+A fresh sandbox holds nothing, so the first `GET /charges/{id}` is a 404 until something creates it. A seed file stores resources before the first request:
+
+```yaml
+# seed.yaml
+charges:
+  - id: ch_8f3a91
+    amount: 5000
+    currency: usd
+    status: success
+  - id: ch_2b7c04
+    amount: 1200
+    currency: usd
+    status: pending
+```
+
+```bash
+pikopod import examplepay --spec ./examplepay.spec.json --seed-data ./seed.yaml
+```
+
+```text
+sandbox examplepay registered (sbx_573f2b2681772dea, 4 endpoints)
+responses: 0 field(s) synthesised without spec, example or convention
+seeded: 2 resources from ./seed.yaml
+serve it with `pikopod up` → http://127.0.0.1:4600/examplepay/...
+test credential (send it the way the spec's auth scheme expects, e.g. the Authorization header):
+  pikopod_sbx_test_cd407f549348ce704a784a71a99566ddb44dc1394cde3354
+```
+
+Each top-level key names a collection the spec declares, such as `charges` for `/charges`; a key no operation stores is refused by name. Every item is validated like a create, so a wrong type is refused naming the field. An `id` becomes the store key; an item without one gets the next key the sandbox would have assigned. `pikopod sandbox seed <name> <file>` adds more later, into the running sandbox when `pikopod up` is serving it and into the store otherwise, and `sandbox list` shows `seeded: N resources`.
+
+## Snapshot, restore and reset
+
+The control plane can mark a point and return to it, without stopping `pikopod up`:
+
+```bash
+curl -s -X POST http://127.0.0.1:4600/_pikopod/sandboxes/examplepay/snapshot
+```
+
+```text
+{"token":"snap_1"}
+```
+
+```bash
+curl -s -X POST http://127.0.0.1:4600/_pikopod/sandboxes/examplepay/restore -H 'Content-Type: application/json' -d '{"token":"snap_1"}'
+```
+
+```text
+{"restored":"snap_1"}
+```
+
+A snapshot covers stored resources; the newest sixteen are kept. `reset` goes further: back to the seeded state, with faults, the standing mode, the request journal and idempotency memory cleared:
+
+```bash
+curl -s -X POST http://127.0.0.1:4600/_pikopod/sandboxes/examplepay/reset
+```
+
+```text
+{"reset":true,"seeded":2}
+```
+
+`pikopod sandbox reset <name>` does the same, through the running server when there is one and directly on the store otherwise.
+
+## A fresh sandbox per test
+
+Two test files sharing one sandbox see each other's resources and modes. A fork is an ephemeral copy with the same spec, seed and seed data, served under its own route:
+
+```bash
+curl -s -X POST http://127.0.0.1:4600/_pikopod/sandboxes/examplepay/fork
+```
+
+```text
+{"credential":"pikopod_sbx_test_cd407f549348ce704a784a71a99566ddb44dc1394cde3354","expires_in_seconds":600,"name":"examplepay--c7a4716e","seeded":2,"url":"/examplepay--c7a4716e/"}
+```
+
+Point one test at `http://127.0.0.1:4600/examplepay--c7a4716e/` and it starts from the seeded state, creates stay inside it, and two forks with one seed answer the same bytes. A fork is removed with `DELETE /_pikopod/sandboxes/<fork>/fork` or after ten idle minutes; `GET /_pikopod/sandboxes/examplepay/forks` lists the live ones. The in-test helpers call this for you.
+
 ## Point staging at it
 
 Set your application's provider base URL to `http://127.0.0.1:4600/examplepay` and send the issued credential. Every response carries `X-Pikopod-Operation` naming the operation that matched and `x-pikopod-contract-version` naming the contract version it was rendered from.
@@ -56,4 +152,4 @@ Register as many as you need; each gets its own route and seed. A mode is global
 
 ## Resetting
 
-`pikopod sandbox reset <name>` clears stored resources. A running `pikopod up` keeps its in-memory journal and webhook state until restarted. See [`pikopod sandbox`](/reference/cli/sandbox).
+`pikopod sandbox reset <name>` returns the sandbox to its seeded state and clears faults, mode and journal, on the running server when there is one. See [`pikopod sandbox`](/reference/cli/sandbox).

@@ -18,6 +18,7 @@ Registers a sandbox named `<provider>`, served at `/<provider>/` by `pikopod up`
 | `--emit-spec <path>` | Write the spec the import used, fetched or extracted, to this path so it can be reviewed, corrected and committed. |
 | `--upstream <name>` | Link to an agent upstream so its traffic refines this contract. Automatic when the names match. |
 | `--recordings` | `first`, `fallback` or `off`: the linked upstream's recordings answer before the spec, only for paths the spec does not declare, or never. Default `first` when recordings exist, else `off`; `--update` re-evaluates it. See [Precedence](/sandbox/precedence). |
+| `--seed-data <file>` | A YAML or JSON file mapping collection names to lists of resources to store before the first request. Each item is validated like a create. See [Running](/sandbox/running#seeding). |
 | `--update` | Re-import an existing sandbox's spec and refresh the declared-drift pin. Accepts the standing spec-diff findings. |
 
 ## Output

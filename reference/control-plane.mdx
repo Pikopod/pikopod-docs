@@ -20,6 +20,20 @@ Traffic to a sandbox goes to `/<name>/...`. The control plane lives under `/_pik
 
 `PUT` replaces the live set at once and does not write the rules file; `pikopod rule add` and `rule drop` write the file and then push it here, so the file stays the source of truth across restarts. See [Rules](/sandbox/rules).
 
+### Seed, snapshot, reset and forks
+
+| Method | Path | Body | Response |
+|---|---|---|---|
+| `POST` | `/_pikopod/sandboxes/<name>/seed` | `{"<collection>": [ {...}, ... ]}` | `{"seeded": n, "total": m}`, or `400` naming the refused item |
+| `POST` | `/_pikopod/sandboxes/<name>/snapshot` | | `{"token": "snap_1"}` |
+| `POST` | `/_pikopod/sandboxes/<name>/restore` | `{"token": "snap_1"}` | `{"restored": "snap_1"}`, or `404` naming an unknown token |
+| `POST` | `/_pikopod/sandboxes/<name>/reset` | | `{"reset": true, "seeded": n}`; faults, mode, journal and idempotency memory cleared |
+| `POST` | `/_pikopod/sandboxes/<name>/fork` | | `201` with `name`, `url`, `credential`, `seeded`, `expires_in_seconds` |
+| `GET` | `/_pikopod/sandboxes/<name>/forks` | | `{"forks": [{"name", "url", "created", "idle_seconds"}]}` |
+| `DELETE` | `/_pikopod/sandboxes/<fork>/fork` | | `{"deleted": "<fork>"}` |
+
+A fork is served at `/<name>--<token>/` and has its own control plane under `/_pikopod/sandboxes/<name>--<token>/`. Seeding a fork does not change the parent's seed file. See [Running](/sandbox/running).
+
 ### Faults
 
 | Method | Path | Body | Response |

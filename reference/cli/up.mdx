@@ -12,6 +12,27 @@ Starts two listeners: the agent on `listen:agent_port` (default `127.0.0.1:4700`
 | Flag | Meaning |
 |---|---|
 | `--wallclock-faults` | Every armed fault delays or hangs on the real wire. By default delays are virtualized and instant, which is what `scenario check` measures against. |
+| `--spec <file-or-url>` | Serve one sandbox from this spec with no config file, in a temporary data directory removed on exit. No agent. |
+| `--name <n>` | With `--spec`: the sandbox name. Default: the spec's file name. |
+| `--seed <s>` | With `--spec`: the sandbox seed. Default: random. |
+| `--seed-data <file>` | With `--spec`: resources to store before the first request. See [Running](/sandbox/running#seeding). |
+| `--port <n>` | With `--spec`: the sandbox port. Default `4600`. |
+
+## Zero config
+
+```bash
+pikopod up --spec ./examplepay.spec.json
+```
+
+```text
+sandbox examplepay registered (sbx_6932b80316f5d1d5, 4 endpoints)
+responses: 0 field(s) synthesised without spec, example or convention
+serve it with `pikopod up` → http://127.0.0.1:4600/examplepay/...
+test credential (send it the way the spec's auth scheme expects, e.g. the Authorization header):
+  pikopod_sbx_test_cd407f549348ce704a784a71a99566ddb44dc1394cde3354
+pikopod sandbox on http://127.0.0.1:4600  (sandboxes: examplepay) — temporary data dir, removed on exit
+no agent: --spec serves the sandbox only; add an upstream to pikopod.yaml to proxy and record real traffic
+```
 
 ## Output
 
