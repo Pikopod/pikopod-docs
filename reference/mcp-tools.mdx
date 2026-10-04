@@ -116,7 +116,7 @@ After the caller's own tests ran against a running sandbox in a mode, check what
 |---|---|---|
 | `sandbox` | yes | Sandbox name |
 
-`CLEAN` when every step passed, `FINDINGS` when the client did not do what the scenario expects, `ERROR` when no mode is set or a step could not run. `data.result` carries the run result, `data.mode` the scenario's name. Needs `pikopod up` and a standing `set_mode`.
+`CLEAN` when every step passed, `FINDINGS` when the client did not do what the scenario expects, `ERROR` when no mode is set or a step could not run. `data.result` carries the run result, `data.mode` the scenario's name. On `FINDINGS`, `data.closest` carries the closest journaled request for the first matcher that never matched and what differed, as a path template and header or query names, so the agent can correct the client without reading the journal. Needs `pikopod up` and a standing `set_mode`.
 
 ## Controls over the running sandbox
 

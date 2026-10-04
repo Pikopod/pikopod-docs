@@ -66,14 +66,25 @@ pikopod mode verify examplepay
     PASSED         storm-shape      3 matcher(s) matched in order
 ```
 
-A client that gave up after the second `503` fails, and the summary says which expectation the journal never met:
+A client that gave up after the second `503` fails, and the summary says which expectation the journal never met and which journaled request came closest:
 
 ```text
-✗ retry_storm — FAILED (matcher 2 (POST /charges) never matched; scanned 2 of 2 journaled request(s))
-    FAILED         storm-shape      matcher 2 (POST /charges) never matched; scanned 2 of 2 journaled request(s)
+✗ retry_storm — FAILED (matcher 2 (POST /charges) never matched; scanned 2 of 2 journaled request(s); closest: POST /charges (request 2 of 2) already matched matcher 1; no later request matched)
+    FAILED         storm-shape      matcher 2 (POST /charges) never matched; scanned 2 of 2 journaled request(s); closest: POST /charges (request 2 of 2) already matched matcher 1; no later request matched
 
 your client did not do what the scenario expects — exit 1
 ```
+
+When a request did reach the sandbox but the matcher still missed, the closest line says what differed, so a wrong path, a missing header or a changed query key is named rather than guessed at. This client retried against the charge instead of the collection:
+
+```text
+✗ retry_storm — FAILED (matcher 0 (POST /charges) never matched; scanned 3 of 3 journaled request(s); closest: POST /charges/ch_{id} (request 1 of 3) — differed on: path /charges/ch_{id} vs /charges)
+    FAILED         storm-shape      matcher 0 (POST /charges) never matched; scanned 3 of 3 journaled request(s); closest: POST /charges/ch_{id} (request 1 of 3) — differed on: path /charges/ch_{id} vs /charges)
+
+your client did not do what the scenario expects — exit 1
+```
+
+Paths are shown as templates and header and query values are never printed, only their names, so the summary is safe to paste into a ticket.
 
 Exit `0` when every step passed, `1` when the client fell short, `2` when no mode is set or the mode's scenario has no verification step. Spacing between requests is judged on wall-clock time, because your client made them in real time. Clear the mode between suites, or the next suite is judged against the last one's requests too.
 
