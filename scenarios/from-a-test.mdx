@@ -71,9 +71,56 @@ func TestClientWithRetriesSurvivesARetryStorm(t *testing.T) {
 
 Nothing from pikopod's internals appears in these signatures, so the package can stay stable while the engine moves.
 
+## From Jest, Vitest or `node --test`
+
+Copy [`helpers/jest/pikopod.js`](https://github.com/pikopod/pikopod/blob/main/helpers/jest/pikopod.js) into your project. It has no dependencies beyond `fetch`. It talks to a running `pikopod up`, or `pikopod up --spec examplepay.spec.json` in the job before the tests, and takes a fork per test so parallel workers never share state:
+
+```js
+const { Pikopod } = require('./pikopod');
+
+test('a client that retries survives retry_storm', async () => {
+  const fork = await new Pikopod({ sandbox: 'examplepay' }).fork();
+  try {
+    await fork.mode('retry_storm');
+    const status = await createCharge(fork, 5);
+    expect(status).toBe(201);
+    const result = await fork.verify();
+    expect(result.passed).toBe(true);
+  } finally {
+    await fork.delete();
+  }
+});
+```
+
+`fork.fetch(path, init)` sends a request to the fork with the credential already set, so `createCharge` is your own client code pointed at `fork.url()`. `mode`, `verify`, `chaos`, `clearFaults`, `emit`, `requests`, `seed`, `snapshot`, `restore` and `reset` mirror the Go surface; `PIKOPOD_URL` and `PIKOPOD_TOKEN` are read from the environment.
+
+## From pytest or unittest
+
+Copy [`helpers/pytest/pikopod.py`](https://github.com/pikopod/pikopod/blob/main/helpers/pytest/pikopod.py). Standard library only.
+
+```python
+from pikopod import Pikopod
+
+class RetryStormTest(unittest.TestCase):
+    def setUp(self):
+        self.fork = Pikopod("examplepay").fork()
+
+    def tearDown(self):
+        self.fork.delete()
+
+    def test_a_client_that_retries_survives(self):
+        self.fork.mode("retry_storm")
+        self.assertEqual(create_charge(self.fork, 5), 201)
+        self.assertTrue(self.fork.verify()["passed"])
+```
+
+`fork.send(method, path, body, headers)` returns `(status, bytes)` with the credential set. The same calls exist in snake case: `mode`, `verify`, `chaos(**rule)`, `clear_faults`, `emit`, `requests`, `seed`, `snapshot`, `restore`, `reset`.
+
+Both helpers are tested in this repository's CI against a served example sandbox, and both speak the versioned control plane, `/_pikopod/v1/...`, documented under [Control plane](/reference/control-plane).
+
 ## One sandbox per test
 
-`New` builds a fresh in-memory sandbox each time, so parallel tests never share state or modes. For a long suite that wants one process, `pikopod up` with [forks](/sandbox/running#a-fresh-sandbox-per-test) gives the same isolation over HTTP, and the Jest and pytest helpers use that.
+`New` builds a fresh in-memory sandbox each time, so parallel tests never share state or modes. Over HTTP, a [fork](/sandbox/running#a-fresh-sandbox-per-test) gives the same isolation, which is what the Jest and pytest helpers take per test.
 
 ## What it needs
 

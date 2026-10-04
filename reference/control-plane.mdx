@@ -3,20 +3,22 @@ title: Control plane
 description: The HTTP endpoints pikopod up serves besides your traffic.
 ---
 
+import Examples from '/snippets/control-plane-examples.mdx';
+
 `pikopod up` serves two listeners. Each carries a small control surface next to the traffic it handles. When a token is configured, every request to either listener must carry it in `X-Pikopod-Token`. On loopback with no token, the sandbox control plane is open, because it controls a fake and never a provider.
 
 All control responses are JSON with `content-type: application/json; charset=utf-8`.
 
 ## Sandbox listener (`:4600`)
 
-Traffic to a sandbox goes to `/<name>/...`. The control plane lives under `/_pikopod/sandboxes/<name>/`.
+Traffic to a sandbox goes to `/<name>/...`. The control plane lives under `/_pikopod/v1/sandboxes/<name>/`. The `v1` segment is the stable contract the [test helpers](/scenarios/from-a-test) are written against; every response carries `x-pikopod-api: v1`. The unversioned paths, `/_pikopod/v1/sandboxes/<name>/...`, keep working as aliases for one release. A fork's control plane lives under its own name, `/_pikopod/v1/sandboxes/<name>--<token>/`, and resolves modes and verification against the parent's spec and seed.
 
 ### Rules
 
 | Method | Path | Body | Response |
 |---|---|---|---|
-| `GET` | `/_pikopod/sandboxes/<name>/rules` | | `{"rules": {"version": n, "rules": [...]}}`, the set the running sandbox is using |
-| `PUT` | `/_pikopod/sandboxes/<name>/rules` | A rule set, `{"version": n, "rules": [...]}` | `200` with the set now live, or `400` naming the rule the spec refuses |
+| `GET` | `/_pikopod/v1/sandboxes/<name>/rules` | | `{"rules": {"version": n, "rules": [...]}}`, the set the running sandbox is using |
+| `PUT` | `/_pikopod/v1/sandboxes/<name>/rules` | A rule set, `{"version": n, "rules": [...]}` | `200` with the set now live, or `400` naming the rule the spec refuses |
 
 `PUT` replaces the live set at once and does not write the rules file; `pikopod rule add` and `rule drop` write the file and then push it here, so the file stays the source of truth across restarts. See [Rules](/sandbox/rules).
 
@@ -24,23 +26,23 @@ Traffic to a sandbox goes to `/<name>/...`. The control plane lives under `/_pik
 
 | Method | Path | Body | Response |
 |---|---|---|---|
-| `POST` | `/_pikopod/sandboxes/<name>/seed` | `{"<collection>": [ {...}, ... ]}` | `{"seeded": n, "total": m}`, or `400` naming the refused item |
-| `POST` | `/_pikopod/sandboxes/<name>/snapshot` | | `{"token": "snap_1"}` |
-| `POST` | `/_pikopod/sandboxes/<name>/restore` | `{"token": "snap_1"}` | `{"restored": "snap_1"}`, or `404` naming an unknown token |
-| `POST` | `/_pikopod/sandboxes/<name>/reset` | | `{"reset": true, "seeded": n}`; faults, mode, journal and idempotency memory cleared |
-| `POST` | `/_pikopod/sandboxes/<name>/fork` | | `201` with `name`, `url`, `credential`, `seeded`, `expires_in_seconds` |
-| `GET` | `/_pikopod/sandboxes/<name>/forks` | | `{"forks": [{"name", "url", "created", "idle_seconds"}]}` |
-| `DELETE` | `/_pikopod/sandboxes/<fork>/fork` | | `{"deleted": "<fork>"}` |
+| `POST` | `/_pikopod/v1/sandboxes/<name>/seed` | `{"<collection>": [ {...}, ... ]}` | `{"seeded": n, "total": m}`, or `400` naming the refused item |
+| `POST` | `/_pikopod/v1/sandboxes/<name>/snapshot` | | `{"token": "snap_1"}` |
+| `POST` | `/_pikopod/v1/sandboxes/<name>/restore` | `{"token": "snap_1"}` | `{"restored": "snap_1"}`, or `404` naming an unknown token |
+| `POST` | `/_pikopod/v1/sandboxes/<name>/reset` | | `{"reset": true, "seeded": n}`; faults, mode, journal and idempotency memory cleared |
+| `POST` | `/_pikopod/v1/sandboxes/<name>/fork` | | `201` with `name`, `url`, `credential`, `seeded`, `expires_in_seconds` |
+| `GET` | `/_pikopod/v1/sandboxes/<name>/forks` | | `{"forks": [{"name", "url", "created", "idle_seconds"}]}` |
+| `DELETE` | `/_pikopod/v1/sandboxes/<fork>/fork` | | `{"deleted": "<fork>"}` |
 
-A fork is served at `/<name>--<token>/` and has its own control plane under `/_pikopod/sandboxes/<name>--<token>/`. Seeding a fork does not change the parent's seed file. See [Running](/sandbox/running).
+A fork is served at `/<name>--<token>/` and has its own control plane under `/_pikopod/v1/sandboxes/<name>--<token>/`. Seeding a fork does not change the parent's seed file. See [Running](/sandbox/running).
 
 ### Faults
 
 | Method | Path | Body | Response |
 |---|---|---|---|
-| `GET` | `/_pikopod/sandboxes/<name>/faults` | | `{"faults": [...]}` |
-| `POST` | `/_pikopod/sandboxes/<name>/faults` | A fault rule (below) | `201 {"armed": <rule>}` |
-| `DELETE` | `/_pikopod/sandboxes/<name>/faults?method=&path=` | | `{"cleared": n}` |
+| `GET` | `/_pikopod/v1/sandboxes/<name>/faults` | | `{"faults": [...]}` |
+| `POST` | `/_pikopod/v1/sandboxes/<name>/faults` | A fault rule (below) | `201 {"armed": <rule>}` |
+| `DELETE` | `/_pikopod/v1/sandboxes/<name>/faults?method=&path=` | | `{"cleared": n}` |
 
 A fault rule:
 
@@ -67,8 +69,8 @@ A fault rule:
 
 | Method | Path | Response |
 |---|---|---|
-| `GET` | `/_pikopod/sandboxes/<name>/requests?limit=50` | `{"requests": [...], "evicted": n}`, newest last |
-| `DELETE` | `/_pikopod/sandboxes/<name>/requests` | `{"reset": true}` |
+| `GET` | `/_pikopod/v1/sandboxes/<name>/requests?limit=50` | `{"requests": [...], "evicted": n}`, newest last |
+| `DELETE` | `/_pikopod/v1/sandboxes/<name>/requests` | `{"reset": true}` |
 
 Each entry carries the sequence number, method, path, matched template, status, and redacted headers, query and body. `evicted` counts older entries the bounded journal dropped. See [Request journal](/sandbox/request-journal).
 
@@ -76,9 +78,9 @@ Each entry carries the sequence number, method, path, matched template, status, 
 
 | Method | Path | Body | Response |
 |---|---|---|---|
-| `GET` | `/_pikopod/sandboxes/<name>/mode` | | `{"mode": <spec or null>}` |
-| `POST` | `/_pikopod/sandboxes/<name>/mode` | `{"name": "<archetype or pack>", "seed": "", "bind": {"role": "operationId"}}` | `201 {"mode": <spec>}` |
-| `DELETE` | `/_pikopod/sandboxes/<name>/mode` | | `{"cleared": n}` |
+| `GET` | `/_pikopod/v1/sandboxes/<name>/mode` | | `{"mode": <spec or null>}` |
+| `POST` | `/_pikopod/v1/sandboxes/<name>/mode` | `{"name": "<archetype or pack>", "seed": "", "bind": {"role": "operationId"}}` | `201 {"mode": <spec>}` |
+| `DELETE` | `/_pikopod/v1/sandboxes/<name>/mode` | | `{"cleared": n}` |
 
 `DELETE` clears every fault on the sandbox and removes the stored mode. A scenario that has no standing state is refused with `400` and the reason. See [Modes](/sandbox/modes).
 
@@ -86,8 +88,8 @@ Each entry carries the sequence number, method, path, matched template, status, 
 
 | Method | Path | Body | Response |
 |---|---|---|---|
-| `GET` | `/_pikopod/sandboxes/<name>/webhooks` | | `{"deliveries": [...], "sink": {"delivered", "failed", "dropped", "lastError"}}` |
-| `POST` | `/_pikopod/sandboxes/<name>/webhooks/emit` | `{"event": "<declared event>", "data": {...}}` | `201 {"emitted": "<event>"}` |
+| `GET` | `/_pikopod/v1/sandboxes/<name>/webhooks` | | `{"deliveries": [...], "sink": {"delivered", "failed", "dropped", "lastError"}}` |
+| `POST` | `/_pikopod/v1/sandboxes/<name>/webhooks/emit` | `{"event": "<declared event>", "data": {...}}` | `201 {"emitted": "<event>"}` |
 
 Only events the spec declares can be emitted. See [Webhooks](/sandbox/webhooks).
 
@@ -100,6 +102,12 @@ Only events the spec declares can be emitted. See [Webhooks](/sandbox/webhooks).
 | `400` | `{"message":"<what went wrong>"}` |
 
 Request bodies are read up to 1 MiB.
+
+### Every endpoint, exercised
+
+Each example below is the real request and response from one run of the endpoint, generated by a test in the repository so this section cannot drift from the binary.
+
+<Examples />
 
 ## Agent listener (`:4700`)
 
