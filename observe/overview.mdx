@@ -21,7 +21,7 @@ upstreams:
 
 Two different things, on two different clocks.
 
-**Incidents.** The upstream answered 5xx, throttled you with a 429, or could not be reached at all. These are facts about one request, so they need no baseline and fire from the very first one. See [Incidents](/observe/incidents).
+**Incidents.** The upstream answered 5xx, throttled you with a 429, or could not be reached at all. These are facts about one request, so they need no baseline and fire from the very first one. With a `webhooks.receiver` configured, the agent also fronts your webhook handler and reports a delivery that arrived twice or out of order. See [Incidents](/observe/incidents).
 
 **Divergence.** The provider answered a request differently from the sandbox built from its own spec: a 422 on a duplicate name the spec never mentions, a 5xx where the sandbox succeeds, a success code the spec does not declare. It needs only the spec and the sandbox, so it fires from the first request. See [Divergence](/observe/divergence).
 

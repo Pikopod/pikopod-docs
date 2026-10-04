@@ -57,6 +57,8 @@ upstreams:
     incidents:
       client_errors: false
       client_error_rate: 0.05
+    webhooks:
+      receiver: http://localhost:3000/hooks/examplepay
 ```
 
 | Key | Default | Meaning |
@@ -68,6 +70,7 @@ upstreams:
 | `spec_source` | | Arms the declared-drift watcher: an `http(s)` URL, a local file, or `git:<ref>:<path>`. See [Spec watch](/observe/spec-watch). |
 | `incidents.client_errors` | `false` | Capture 4xx as incidents. |
 | `incidents.client_error_rate` | `0.05` | Share of requests to one endpoint family that must be 4xx before one is reported. Below 20 requests no rate is claimed. |
+| `webhooks.receiver` | | Absolute URL of your webhook handler. The agent serves `/hooks/<name>`, forwards every delivery there untouched, records it redacted, and reports duplicates and out-of-order deliveries. Point the provider's webhook URL at the agent. Absent means no tap. See [Incidents](/observe/incidents#inbound-webhooks). |
 
 Upstream names may only contain letters, digits, `_` and `-`, because the name becomes a file path component under `data_dir`.
 

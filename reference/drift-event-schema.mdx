@@ -67,6 +67,8 @@ Incident kinds describe an exchange that failed. They need no baseline:
 | `upstream_unreachable` | pikopod could not reach the upstream and returned its own 502. |
 | `rate_limited` | The upstream answered 429. |
 | `client_error` | The upstream answered 4xx. Opt-in. |
+| `webhook_duplicate` | The provider delivered one webhook id twice. `field` is the event name; `status_class` is empty. |
+| `webhook_out_of_order` | A webhook for a resource arrived with an older event time than one already seen. `field` is the event name; `status_class` is empty. |
 
 One kind compares the provider with the sandbox built from its spec. It needs no baseline either:
 

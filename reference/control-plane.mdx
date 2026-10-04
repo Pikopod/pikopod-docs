@@ -107,6 +107,11 @@ Traffic to an upstream goes to its `listen` route, `/<upstream>/...` by default.
   "recordings_sampled_out": 0,
   "observer_panics": 0,
   "events_emitted": 0,
+  "divergence_checked": 0,
+  "divergence_unverifiable": 0,
+  "divergence_skipped": 0,
+  "webhooks_received": 0,
+  "webhooks_dropped": 0,
   "alerts_sent": 0,
   "last_delivery_ok": false,
   "last_delivery_err": "",
@@ -119,7 +124,11 @@ Traffic to an upstream goes to its `listen` route, `/<upstream>/...` by default.
 }
 ```
 
-With a token set and no header it answers `200 {"status":"ok"}` only, so a load balancer can poll it without being handed your upstream inventory. `spec_watch` appears when a watcher is armed.
+With a token set and no header it answers `200 {"status":"ok"}` only, so a load balancer can poll it without being handed your upstream inventory. `spec_watch` appears when a watcher is armed. The `divergence_*` counters are described under [Divergence](/observe/divergence) and the `webhooks_*` counters under [Incidents](/observe/incidents#inbound-webhooks).
+
+### Inbound webhooks
+
+`POST /hooks/<upstream>` exists for every upstream with a `webhooks.receiver`. It needs no token and ignores the loopback Host guard, since the provider delivering to it cannot carry either; it forwards to the configured receiver and nothing else.
 
 ### Acknowledge and accept
 

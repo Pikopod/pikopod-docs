@@ -99,3 +99,7 @@ When the sink refused a delivery, the last failure is shown. `scenario check` pr
 ## Misdelivery on purpose
 
 `duplicate_webhook`, `drop_webhook`, `reorder_webhook` and `delay_webhook` are faults matched by event. The `duplicate_delivery` archetype uses the first to ask whether your handler dedupes. See [Faults](/sandbox/faults#webhook-faults).
+
+## The observed half
+
+The sandbox rehearses misdelivery; the agent observes it. With `webhooks.receiver` set on the upstream, the agent serves `/hooks/<upstream>`, forwards each real delivery to your handler untouched, and reports `webhook_duplicate` and `webhook_out_of_order` incidents from the first occurrence. The same envelope you declared here tells the agent where the event name, delivery id and timestamp live in the provider's wire shape. See [Incidents](/observe/incidents#inbound-webhooks).

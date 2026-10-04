@@ -5,7 +5,7 @@ description: An exchange that failed. Needs no baseline, fires from the first re
 
 An incident is a fact about one request, so it needs no baseline and is never subject to the warmup window.
 
-## The four kinds
+## The six kinds
 
 | Kind | Fires when | Level | Default |
 |---|---|---|---|
@@ -13,8 +13,10 @@ An incident is a fact about one request, so it needs no baseline and is never su
 | `upstream_unreachable` | pikopod could not reach the upstream and returned its own 502. Never retried. | `ERR` | Always on |
 | `rate_limited` | The upstream answered 429. | `WARN` | Always on |
 | `client_error` | The upstream answered 4xx above a configured rate. | `WARN` | Opt-in |
+| `webhook_duplicate` | The provider delivered the same webhook id twice within 24 hours. | `WARN` | With a `webhooks.receiver` |
+| `webhook_out_of_order` | A webhook for a resource arrived carrying an older event time than one already seen for it. | `ERR` | With a `webhooks.receiver` |
 
-The first three are never normal and cannot be switched off.
+The first three are never normal and cannot be switched off. The last two need the inbound webhook tap, below.
 
 ## Why 4xx is opt-in
 
@@ -29,6 +31,34 @@ upstreams:
 ```
 
 `client_error_rate` is the share of requests to one endpoint family that must be 4xx before one is reported. Below 20 requests to a family no rate is claimed at all, because the first 4xx is a rate of 1.0 and means nothing.
+
+## Inbound webhooks
+
+The agent can also sit in front of your webhook handler. Give the upstream a receiver and point the provider's webhook URL at the agent's `/hooks/<upstream>`:
+
+```yaml
+upstreams:
+  examplepay:
+    target: https://api.examplepay.com
+    webhooks:
+      receiver: http://localhost:3000/hooks/examplepay
+```
+
+Each delivery is forwarded to the receiver untouched and the receiver's response goes back to the provider, byte for byte. Nothing is retried. Recording is asynchronous and bounded, like the proxy, so a wedged recorder drops captures and counts them on `/healthz` as `webhooks_dropped`, never a delivery. `/hooks/<upstream>` is the one route that needs no `X-Pikopod-Token` and ignores the loopback Host guard, because the provider cannot carry your token and the delivery is authenticated by the provider's own signature, which your receiver still verifies.
+
+What is recorded per delivery, redacted before disk, in `<data_dir>/recordings/<upstream>.webhooks.ndjson`: the event name, the delivery id as a token, the resource id as a token, the event timestamp, and the order it arrived in. The event name and id come from the provider's envelope when the sandbox has one declared, from the `x-pikopod-webhook-*` headers otherwise, and from `type`, `id` and `created` in the body as a last resort.
+
+```text
+[WARN] pikopod incident — webhook delivered twice on POST /hooks/examplepay (examplepay)
+charge.succeeded arrived twice with one delivery id — a handler that is not idempotent ran twice; rehearse it: pikopod scenario check examplepay duplicate_delivery
+fingerprint fp_8e0e74adcaba · first seen 2026-10-03T11:17:39+01:00 · 1 occurrence(s)
+
+[ERR] pikopod incident — webhooks arrived out of order on POST /hooks/examplepay (examplepay)
+charge.pending arrived after a newer event for the same resource — a handler that applies events in arrival order went backwards; rehearse it: pikopod chaos examplepay --kind reorder_webhook
+fingerprint fp_e6e9ba4e5927 · first seen 2026-10-03T11:17:39+01:00 · 1 occurrence(s)
+```
+
+Both fire on the first occurrence with no warmup. They are not reproduced with `reproduce`, because there is no request for the sandbox to answer; they are rehearsed with the sandbox's own misdelivery faults, which is the other half of the same story. See [Webhooks](/sandbox/webhooks).
 
 ## The recording is the reproduction
 
@@ -49,6 +79,17 @@ pikopod agent incidents --kind upstream_error --upstream examplepay --format jso
   reproducible until 2026-09-26T10:00:00Z
   reproduce: pikopod reproduce fp_14835fa32dfb
   export: pikopod agent incidents export fp_14835fa32dfb
+```
+
+A webhook incident lists the way to rehearse it instead of a reproduce command:
+
+```text
+[ERR] incident webhook_out_of_order   POST /hooks/examplepay (examplepay) · 1 occurrence(s) · last 2026-10-03T11:17:39+01:00
+  fp_e6e9ba4e5927
+  rehearse: pikopod chaos examplepay --kind reorder_webhook
+[WARN] incident webhook_duplicate      POST /hooks/examplepay (examplepay) · 1 occurrence(s) · last 2026-10-03T11:17:39+01:00
+  fp_8e0e74adcaba
+  rehearse: pikopod scenario check examplepay duplicate_delivery
 ```
 
 `--only` takes `incidents`, `drift` or `divergence`; the third lists what the provider did that the sandbox would not have, see [Divergence](/observe/divergence). `agent incidents` is a reader, not a gate: it exits `0` whether or not it found anything. The `reproducible until` line appears when `retention.max_age_hours` bounds how long the recording stays on disk. `--format json` always carries `total_matching` and `truncated`. See [`pikopod agent incidents`](/reference/cli/incidents).
