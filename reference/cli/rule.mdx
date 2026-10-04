@@ -58,6 +58,18 @@ saved; applies when `pikopod up` serves examplepay
 
 An unknown id is refused by name.
 
+## rule promote
+
+```text
+pikopod rule promote <fingerprint> [--yes]
+```
+
+Turns a `behaviour_divergence` event into a rule on the sandbox linked to the event's upstream. The recorded request's features become `when`: a tokenized identifier becomes `exists_in_store` on that field, a readable value becomes `equals`, a dropped value is left out and named. The provider's recorded status and body become `respond`. Provenance is `promoted:<fingerprint>`.
+
+Prints the divergence, the redacted request, the provider's response and the rule, then asks "Is this the provider's behaviour, not this integration's payload?" and "Does it hold for every caller?". Either answered no writes nothing. `--yes` skips both. After writing, it replays the recorded traffic through a fork with and without the rule and prints both statuses. See [Promoting a divergence](/sandbox/rules#promoting-a-divergence).
+
+Exits `2` when the fingerprint is not a divergence (an incident is reproduced, a shape change is pinned) or when every feature was dropped before disk, in which case it says to write the rule by hand.
+
 ## rule check
 
 ```text

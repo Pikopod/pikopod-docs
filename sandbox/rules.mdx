@@ -119,6 +119,74 @@ unique-reference  POST /charges when body.reference exists_in_store  422 body  m
 
 When `pikopod up` is serving the sandbox, `add` and `drop` push the new set to it at once. `rule check` tells you about a rule that fires on every request to an operation, so its declared success is never served, and about rules that can never fire. See [`pikopod rule`](/reference/cli/rule).
 
+## Promoting a divergence
+
+A [divergence](/observe/divergence) is the provider answering a recorded request differently from the sandbox. `rule promote` turns one into a rule, so the sandbox keeps the provider's behaviour from then on:
+
+```bash
+pikopod rule promote fp_a54f1964b9f6 --yes
+```
+
+```text
+divergence fp_a54f1964b9f6 on POST /charges (examplepay): undocumented_rule
+  sandbox answered 201, provider answered 422; request carried body.amount, body.currency, body.reference
+
+recorded request (redacted):
+  POST /charges
+  {"amount":5000,"currency":"usd"}
+
+provider's response:
+  422
+  {}
+
+not conditioned on body.reference: its value was dropped before disk, so the rule may be broader than the provider's behaviour
+
+rule to write to pikopod-data/apis/examplepay.rules.json:
+{
+  "id": "promoted-a54f1964b9f6",
+  "when": {
+    "method": "POST",
+    "path": "/charges",
+    "body": {
+      "amount": {
+        "equals": 5000
+      },
+      "currency": {
+        "equals": "usd"
+      }
+    }
+  },
+  "respond": {
+    "status": 422,
+    "body": {}
+  },
+  "provenance": "promoted:fp_a54f1964b9f6",
+  "version": 0
+}
+
+added promoted-a54f1964b9f6 (set version 1)
+saved; applies when `pikopod up` serves examplepay
+
+the sandbox now answers the recorded request differently: before: 201  after: 422
+```
+
+How the rule is derived, from the recording and nothing else:
+
+- `when` is the recorded request's features. A tokenized identifier becomes `exists_in_store` on that field, which is the shape of "this value was already used". A readable value becomes `equals`. A value the redactor dropped cannot be conditioned on, and the command says so, because a rule missing that condition may fire more broadly than the provider does.
+- `respond` is the provider's recorded status and body, redacted as stored.
+- `provenance` is `promoted:<fingerprint>`, so `rule list` shows where it came from.
+
+Without `--yes` it asks two questions before writing, and either answered no writes nothing:
+
+```text
+Is this the provider's behaviour, not this integration's payload? [y/N]
+Does it hold for every caller? [y/N]
+```
+
+The first is the question the agent cannot answer: a 422 may be the provider's rule, or this integration sending something wrong. The second is about scope: a rule answers every caller of the sandbox. In the run above the reference, which was the real reason for the refusal, had been dropped before disk, so the honest answer to the second question is no, and the rule to write by hand is the `exists_in_store` one at the top of this page.
+
+After writing, the command replays the recorded traffic through a fork with and without the new rule and prints both statuses, so you see what changed before anyone else does.
+
 ## Seeing which rule fired
 
 `requests --explain` replays a request against a fork and names the rule:

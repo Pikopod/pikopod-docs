@@ -70,7 +70,7 @@ PASSED — 1 assertion(s) passed; 0 not evaluated
 the failure now happens locally — fix it, then re-run: pikopod scenario check examplepay incident-a54f1964b9f6
 ```
 
-`reproduce` arms the provider's real status and body on the route, so the refusal happens on your laptop. It does not yet teach the sandbox the rule itself; a [rule](/sandbox/rules) answering `422` when the reference already exists does that today, and automatic promotion from a divergence is next. A `spec_drift` divergence where the provider accepted what the sandbox refuses has nothing to arm, and `reproduce` says so.
+`reproduce` arms the provider's real status and body on the route, so the refusal happens on your laptop once. `pikopod rule promote <fingerprint>` goes further: the recorded request's features become a rule's condition and the provider's response becomes its answer, so the sandbox keeps the provider's behaviour from then on. It asks two questions first. See [Promoting a divergence](/sandbox/rules#promoting-a-divergence). A `spec_drift` divergence where the provider accepted what the sandbox refuses has nothing to arm, and `reproduce` says so.
 
 ## The event
 
