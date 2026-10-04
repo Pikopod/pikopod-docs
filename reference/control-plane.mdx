@@ -69,10 +69,11 @@ A fault rule:
 
 | Method | Path | Response |
 |---|---|---|
-| `GET` | `/_pikopod/v1/sandboxes/<name>/requests?limit=50` | `{"requests": [...], "evicted": n}`, newest last |
-| `DELETE` | `/_pikopod/v1/sandboxes/<name>/requests` | `{"reset": true}` |
+| `GET` | `/_pikopod/v1/sandboxes/<name>/requests?limit=50` | `{"requests": [...], "evicted": n, "scopes": {"live": n, "evicted": n}}`, newest last |
+| `GET` | `/_pikopod/v1/sandboxes/<name>/requests?scope=<token>` | The same, for the requests that carried `X-Pikopod-Scope: <token>`, plus `"scope": "<token>"` |
+| `DELETE` | `/_pikopod/v1/sandboxes/<name>/requests[?scope=<token>]` | `{"reset": true}`; with `scope`, only that partition is cleared |
 
-Each entry carries the sequence number, method, path, matched template, status, and redacted headers, query and body. `evicted` counts older entries the bounded journal dropped. See [Request journal](/sandbox/request-journal).
+Each entry carries the sequence number, method, path, matched template, status, and redacted headers, query and body. `evicted` counts older entries the bounded journal dropped. `scopes.live` counts the scopes the sandbox currently keeps, at most 256, and `scopes.evicted` the ones it forgot to make room. See [Request journal](/sandbox/request-journal).
 
 ### Mode
 
@@ -83,6 +84,13 @@ Each entry carries the sequence number, method, path, matched template, status, 
 | `DELETE` | `/_pikopod/v1/sandboxes/<name>/mode` | | `{"cleared": n}` |
 
 `DELETE` clears every fault on the sandbox and removes the stored mode. A scenario that has no standing state is refused with `400` and the reason. See [Modes](/sandbox/modes).
+
+| Method | Path | Response |
+|---|---|---|
+| `POST` | `/_pikopod/v1/sandboxes/<name>/mode/verify` | `{"result": <run result>, "mode": "<name>", "scopes": {"live": n, "evicted": n}}`; `409` when no mode is set |
+| `POST` | `/_pikopod/v1/sandboxes/<name>/mode/verify?scope=<token>` | The same, judging only the requests that carried `X-Pikopod-Scope: <token>`, plus `"scope": "<token>"` |
+
+Without `scope`, only the requests that carried no scope header are judged. See [Scoped, or global](/sandbox/modes#scoped-or-global).
 
 ### Webhooks
 

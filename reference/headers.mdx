@@ -8,6 +8,7 @@ description: The request and response headers pikopod reads, sets, and strips.
 | Header | Direction | Meaning |
 |---|---|---|
 | `X-Pikopod-Token` | Request | Required on every request when a token is configured. Stripped before anything is forwarded or recorded, in every configuration. |
+| `X-Pikopod-Scope` | Request | Partitions a sandbox's fault windows, request journal and recordings cursor per test or worker; at most 128 characters. Stripped before anything is journaled, forwarded or recorded. See [Scoped, or global](/sandbox/modes#scoped-or-global). |
 
 ## The agent
 

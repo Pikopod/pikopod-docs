@@ -94,6 +94,15 @@ test('a client that retries survives retry_storm', async () => {
 
 `fork.fetch(path, init)` sends a request to the fork with the credential already set, so `createCharge` is your own client code pointed at `fork.url()`. `mode`, `verify`, `chaos`, `clearFaults`, `emit`, `requests`, `seed`, `snapshot`, `restore` and `reset` mirror the Go surface; `PIKOPOD_URL` and `PIKOPOD_TOKEN` are read from the environment.
 
+When several tests share one sandbox and one mode instead of forking, `fork.scoped()` returns a client that sends `X-Pikopod-Scope` on every request and verifies only that partition. Inside a Jest test the token is derived from the test name and worker id; pass one explicitly anywhere else:
+
+```js
+const [a, b] = [sbx.scoped('worker-a'), sbx.scoped('worker-b')];
+await Promise.all([createCharge(a, 5), createCharge(b, 5)]);
+expect((await a.verify()).passed).toBe(true);
+expect((await b.verify()).passed).toBe(true);
+```
+
 ## From pytest or unittest
 
 Copy [`helpers/pytest/pikopod.py`](https://github.com/pikopod/pikopod/blob/main/helpers/pytest/pikopod.py). Standard library only.
@@ -114,13 +123,13 @@ class RetryStormTest(unittest.TestCase):
         self.assertTrue(self.fork.verify()["passed"])
 ```
 
-`fork.send(method, path, body, headers)` returns `(status, bytes)` with the credential set. The same calls exist in snake case: `mode`, `verify`, `chaos(**rule)`, `clear_faults`, `emit`, `requests`, `seed`, `snapshot`, `restore`, `reset`.
+`fork.send(method, path, body, headers)` returns `(status, bytes)` with the credential set. The same calls exist in snake case: `mode`, `verify`, `chaos(**rule)`, `clear_faults`, `emit`, `requests`, `seed`, `snapshot`, `restore`, `reset`. `scoped(token)` returns a client bound to one `X-Pikopod-Scope` partition; `test_scope(request.node.nodeid)` derives a token from the pytest node id and the xdist worker.
 
 Both helpers are tested in this repository's CI against a served example sandbox, and both speak the versioned control plane, `/_pikopod/v1/...`, documented under [Control plane](/reference/control-plane).
 
 ## One sandbox per test
 
-`New` builds a fresh in-memory sandbox each time, so parallel tests never share state or modes. Over HTTP, a [fork](/sandbox/running#a-fresh-sandbox-per-test) gives the same isolation, which is what the Jest and pytest helpers take per test.
+`New` builds a fresh in-memory sandbox each time, so parallel tests never share state or modes. Over HTTP, a [fork](/sandbox/running#a-fresh-sandbox-per-test) gives the same isolation, which is what the Jest and pytest helpers take per test. When tests must share one sandbox, a [scope](/sandbox/modes#scoped-or-global) keeps their fault windows and journals apart without a fork.
 
 ## What it needs
 

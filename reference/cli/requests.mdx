@@ -4,7 +4,7 @@ description: What a running sandbox received, and why it answered the way it did
 ---
 
 ```text
-pikopod requests <sandbox> [--last 50] [--reset]
+pikopod requests <sandbox> [--last 50] [--scope <token>] [--reset]
 pikopod requests <sandbox> --explain <METHOD> <path> [--body <json>] [--auth=false]
 ```
 
@@ -18,7 +18,16 @@ The request journal of a **running** sandbox: what your code actually sent, newe
 2 request(s)
 ```
 
-When the bounded journal has evicted older entries, the footer says how many, because ordering claims across the gap cannot be proven. `--reset` clears the journal. See [Request journal](/sandbox/request-journal).
+When the bounded journal has evicted older entries, the footer says how many, because ordering claims across the gap cannot be proven. `--reset` clears the journal. `--scope <token>` shows, or with `--reset` clears, only the requests that carried `X-Pikopod-Scope: <token>`; when any scoped request has been seen, the footer counts live and evicted scopes:
+
+```text
+#1    POST   /charges                                 → 503
+#2    POST   /charges                                 → 503
+#3    POST   /charges                                 → 201
+3 request(s) in scope "worker-1" — 2 live scope(s), 0 evicted
+```
+
+See [Request journal](/sandbox/request-journal).
 
 ## --explain
 

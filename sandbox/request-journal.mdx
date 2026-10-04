@@ -36,6 +36,23 @@ The journal holds the newest 1024 entries, 64 headers and 64 query values per en
 
 Clear it with `pikopod requests examplepay --reset`.
 
+## Scopes
+
+Requests that carry an `X-Pikopod-Scope: <token>` header land in their own partition of the journal, and `--scope` reads one partition. The header itself is stripped before the entry is written, so the token is never journaled as a header:
+
+```bash
+pikopod requests examplepay --scope worker-1
+```
+
+```text
+#1    POST   /charges                                 → 503
+#2    POST   /charges                                 → 503
+#3    POST   /charges                                 → 201
+3 request(s) in scope "worker-1" — 2 live scope(s), 0 evicted
+```
+
+Without `--scope`, every partition is listed. A sandbox keeps at most 256 live scopes; the one idle longest is forgotten when a new one arrives, and the footer counts how many were. See [Scoped, or global](/sandbox/modes#scoped-or-global).
+
 ## In scenarios
 
 Scenario runs have their own journal inside the run. `VERIFY_REQUESTS` answers "how many, and what was the last one"; `VERIFY_SEQUENCE` answers "in what order, and how far apart".

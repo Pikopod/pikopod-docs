@@ -29,16 +29,30 @@ pikopod mode set examplepay incident-14835fa32dfb
 
 Packs work as well as archetypes, so a reproduced production incident can be the standing state your whole suite runs against.
 
-## Global, and standing
+## Scoped, or global
 
-A mode is global to the sandbox and stays until cleared. Two test suites running against one sandbox see each other's faults, and a fault with a `times` window counts down across both. Run one suite at a time against a given sandbox, or give each its own `pikopod up` on a different port.
+A mode is set on the sandbox and stays until cleared. What each test sees is partitioned by one request header, `X-Pikopod-Scope`. Three things are partitioned: fault `times` and `per` windows, the request journal, and the recordings cursor. Two workers that each send their own scope get their own `503, 503, 201` under the same idempotency key, and `mode verify --scope` judges one partition:
+
+```bash
+pikopod mode verify examplepay --scope worker-1
+```
+
+```text
+scope "worker-1": judging only the requests sent with X-Pikopod-Scope: worker-1
+✓ retry_storm — PASSED (3 matcher(s) matched in order)
+    PASSED         storm-shape      3 matcher(s) matched in order
+```
+
+Requests without the header share the unscoped partition, and an unscoped `mode verify` judges only that partition. A scoped client never consumes an unscoped window, and the reverse. The [Jest and pytest helpers](/scenarios/from-a-test) send the header per test with `scoped()`.
+
+The header is stripped before the request is journaled, so a scope token never appears in `pikopod requests` output or in a recording. A sandbox keeps at most 256 live scopes; when a 257th arrives, the scope idle longest is forgotten, with its journal and windows, and the control plane counts the eviction. A scope longer than 128 characters is refused with `400`.
 
 ```bash
 pikopod mode show examplepay
 pikopod mode clear examplepay
 ```
 
-`clear` leaves the standing state and clears every fault on the sandbox.
+`clear` leaves the standing state and clears every fault on the sandbox, in every scope.
 
 ## Verify what your tests sent
 
@@ -86,7 +100,7 @@ your client did not do what the scenario expects — exit 1
 
 Paths are shown as templates and header and query values are never printed, only their names, so the summary is safe to paste into a ticket.
 
-Exit `0` when every step passed, `1` when the client fell short, `2` when no mode is set or the mode's scenario has no verification step. Spacing between requests is judged on wall-clock time, because your client made them in real time. Clear the mode between suites, or the next suite is judged against the last one's requests too.
+Exit `0` when every step passed, `1` when the client fell short, `2` when no mode is set or the mode's scenario has no verification step. Spacing between requests is judged on wall-clock time, because your client made them in real time. Clear the mode between suites, or give each suite its own scope; otherwise the next suite is judged against the last one's requests too.
 
 ## From a test
 
