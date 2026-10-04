@@ -5,6 +5,8 @@ description: One job that fails the build on a breaking spec change and annotate
 
 ## GitHub Actions
 
+Two lines. The action downloads a pinned release, verifies `SHA256SUMS` with cosign against the release workflow's identity, and runs the gate:
+
 ```yaml
 name: provider-contract
 on: [pull_request]
@@ -19,29 +21,23 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Install pikopod
-        run: |
-          VERSION=0.1.1
-          curl -fsSL "https://github.com/Pikopod/pikopod/releases/download/v${VERSION}/pikopod_${VERSION}_linux_amd64.tar.gz" | tar xz
-      - name: Gate on declared drift
-        run: |
-          git config --global --add safe.directory "$GITHUB_WORKSPACE"
-          ./pikopod spec-diff git:origin/main:openapi.yaml openapi.yaml \
-            --format githubactions --fail-on ERR --handoff report.json
+      - uses: Pikopod/spec-diff-action@v1
+        id: gate
+        with: { old: "git:origin/main:openapi.yaml", new: openapi.yaml }
       - name: Post the report on the PR
         if: always()
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: ./pikopod pr comment --handoff report.json
+        run: pikopod pr comment --handoff "${{ steps.gate.outputs.report }}"
 ```
 
 What each piece does:
 
 - **`fetch-depth: 0`** so `git:origin/main:openapi.yaml` can be read from object storage. No checkout of the base branch is needed.
-- **`safe.directory`** because in a CI container the checkout is often owned by another user and git refuses to read it. pikopod detects this and prints the same fix, but setting it up front avoids a red run.
-- **`--format githubactions`** turns every finding into a workflow command carrying file, line and column, so it appears inline on the diff.
-- **`--handoff report.json`** writes the JSON report alongside the annotations.
-- **`pr comment`** posts one marker-tagged comment and updates it in place on re-runs. Platform, repository, PR number and head SHA are detected from the Actions environment. The token comes from `GITHUB_TOKEN` or `GH_TOKEN`, never from a flag.
+- **The action** sets `safe.directory`, runs `spec-diff` with `--format githubactions` so every finding lands inline on the diff, and always writes the JSON report. Inputs `fail-on` (default `ERR`), `format`, `handoff` and `version`; outputs `findings`, `report` and `exit-code`. Source and the verification script: [Pikopod/spec-diff-action](https://github.com/Pikopod/spec-diff-action).
+- **`pr comment`** posts one marker-tagged comment and updates it in place on re-runs. Platform, repository, PR number and head SHA are detected from the Actions environment. The token comes from `GITHUB_TOKEN` or `GH_TOKEN`, never from a flag. The binary is on the `PATH` after the action ran.
+
+Without the action, install the release yourself and run the same command; the verification command is under [Installation](/getting-started/installation#verify-a-release).
 
 If the token cannot comment (a read-only token on a fork PR), `pr comment` degrades: it writes the report to the job summary, or to stdout, and exits `0` with a note on stderr.
 
@@ -91,7 +87,14 @@ See [Replay gate](/observe/replay-gate).
 
 ## Running the sandbox in CI
 
-Scenario runs need no server: `pikopod scenario check` builds its own engine in-process.
+Scenario runs need no server: `pikopod scenario check` builds its own engine in-process. The second action in the same repository imports the spec and runs the scenarios:
+
+```yaml
+- uses: Pikopod/spec-diff-action/scenario-check@v1
+  with: { sandbox: examplepay, spec: specs/examplepay.json, scenarios: "declines timeouts retry_storm partial_failure" }
+```
+
+Or by hand:
 
 ```bash
 ./pikopod import examplepay --spec ./specs/examplepay.yaml --seed ci-fixed
