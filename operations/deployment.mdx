@@ -65,7 +65,7 @@ docker run --rm \
   -v /srv/pikopod:/data \
   -p 127.0.0.1:4600:4600 -p 127.0.0.1:4700:4700 \
   -e PIKOPOD_DATA_DIR=/data \
-  ghcr.io/pikopod/pikopod:0.1.1 up --config /data/pikopod.yaml
+  ghcr.io/pikopod/pikopod:0.2.0 up --config /data/pikopod.yaml
 ```
 
 Set `listen: 0.0.0.0` and a token inside the container so the published ports are reachable, and keep the host-side binding on loopback unless you mean otherwise.

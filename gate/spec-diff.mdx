@@ -96,7 +96,7 @@ Severity is never hand-assigned per check. One function maps the shape of a chan
 
 ```yaml
 - run: |
-    VERSION=0.1.1
+    VERSION=0.2.0
     curl -fsSL "https://github.com/Pikopod/pikopod/releases/download/v${VERSION}/pikopod_${VERSION}_linux_amd64.tar.gz" | tar xz
     ./pikopod spec-diff git:origin/main:openapi.yaml openapi.yaml --format githubactions --fail-on ERR
 ```

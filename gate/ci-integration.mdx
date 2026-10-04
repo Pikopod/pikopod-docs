@@ -48,7 +48,7 @@ spec-diff:
   image: alpine:3
   script:
     - apk add --no-cache curl git
-    - VERSION=0.1.1
+    - VERSION=0.2.0
     - curl -fsSL "https://github.com/Pikopod/pikopod/releases/download/v${VERSION}/pikopod_${VERSION}_linux_amd64.tar.gz" | tar xz
     - git config --global --add safe.directory "$CI_PROJECT_DIR"
     - ./pikopod spec-diff git:origin/main:openapi.yaml openapi.yaml --fail-on ERR --handoff report.json
@@ -66,7 +66,7 @@ The image is `FROM scratch` and runs as an unprivileged user:
 - name: Gate on declared drift
   run: |
     docker run --rm -v "$PWD:/work" -w /work \
-      ghcr.io/pikopod/pikopod:0.1.1 spec-diff old.yaml new.yaml --fail-on ERR
+      ghcr.io/pikopod/pikopod:0.2.0 spec-diff old.yaml new.yaml --fail-on ERR
 ```
 
 There is no git inside the image, so use file sources or check the base version out to a path first.
