@@ -7,18 +7,20 @@ Drift is about a **successful** response whose shape changed. It needs a frozen 
 
 ## The eight kinds
 
-| Kind | Fires when | Level |
-|---|---|---|
-| `field_added` | A field appeared that the reference never had. | `INFO` |
-| `field_removed` | A field present in at least 98% of reference samples is gone. | `ERR` |
-| `type_changed` | A field arrived with a type the reference never saw. | `ERR` |
-| `enum_value_new` | A low-cardinality string field carried a value outside the known set. | `WARN` |
-| `field_nullable` | A never-null field arrived null. Its own kind, because it is a different break with a different fix. | `ERR` |
-| `status_code_changed` | The exact code moved within a known class, such as 200 to 201. | `ERR` |
-| `status_new` | A status class this endpoint had never returned. | `ERR` |
-| `error_shape_changed` | A 4xx or 5xx body was restructured. Collapsed to one finding rather than a flood of adds and removes. | `ERR` |
+| Kind | Fires when | Level | Risk |
+|---|---|---|---|
+| `field_added` | A field appeared that the reference never had. | `INFO` | `low` |
+| `field_removed` | A field present in at least 98% of reference samples is gone. | `ERR` | `high` |
+| `type_changed` | A field arrived with a type the reference never saw. | `ERR` | `high` |
+| `enum_value_new` | A low-cardinality string field carried a value outside the known set. | `WARN` | `medium` |
+| `field_nullable` | A never-null field arrived null. Its own kind, because it is a different break with a different fix. | `ERR` | `high` |
+| `status_code_changed` | The exact code moved within a known class, such as 200 to 201. | `ERR` | `high` |
+| `status_new` | A status class this endpoint had never returned. | `ERR` | `high` |
+| `error_shape_changed` | A 4xx or 5xx body was restructured. Collapsed to one finding rather than a flood of adds and removes. | `ERR` | `high` |
 
 The level is graded by what breaks consumers: something removed or retyped is `ERR`, a new value is `WARN`, something purely additive is `INFO`. A finding the provider's new spec documents is downgraded to `INFO` with a note saying so. See [Spec watch](/observe/spec-watch).
+
+Risk is the same grading as the [replay gate](/observe/replay-gate#risk-tiers) sees it: `agent replay --ci --fail-on <tier>` fails a build only on findings at or above that tier, `medium` by default, and a documented finding drops one tier.
 
 ## The smallest example
 

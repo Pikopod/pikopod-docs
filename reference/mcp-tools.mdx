@@ -51,8 +51,9 @@ The CI gate: recorded traffic against frozen baselines, offline.
 | Argument | Required | Meaning |
 |---|---|---|
 | `upstreams` | | Upstreams to gate. Default: all. |
+| `fail_on` | | Lowest risk tier that fails: `high`, `medium` or `low`. Default `medium`. |
 
-`FINDINGS` lists drift per endpoint. `CLEAN` means every gated recording matched. `UNVERIFIABLE` with a reason when an upstream has no baselines or no recordings. Recordings made before an endpoint warmed up are skipped and counted.
+`FINDINGS` lists drift at or above `fail_on` per endpoint under `data.upstreams.<name>.findings`, each with `risk` and `fingerprint`. Findings below the tier and accepted fingerprints are listed under `accepted` with a `because`, and never make the verdict `FINDINGS`. `CLEAN` means every gated recording matched or every finding was accepted. `UNVERIFIABLE` with a reason when an upstream has no baselines or no recordings. `ERROR` for an unknown tier. Recordings made before an endpoint warmed up are skipped and counted. See [Risk tiers](/observe/replay-gate#risk-tiers).
 
 ### conformance
 

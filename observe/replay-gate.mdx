@@ -9,7 +9,7 @@ pikopod agent replay --ci examplepay --handoff replay.json
 ```
 
 ```text
-examplepay: 37 recordings gated (1 pre-warmup skipped) — 0 finding(s)
+examplepay: 37 recordings gated (0 pre-warmup skipped) — 0 finding(s) at or above medium, 0 accepted
 clean — no drift against frozen baselines
 ```
 
@@ -17,15 +17,40 @@ clean — no drift against frozen baselines
 
 ## What it compares
 
-Each JSON recording is matched to its `(method, template, status class)` family and diffed the same way live traffic is: fields added or removed, types changed, values outside the known set, a field arriving null, a status code moving within its class. Findings are deduplicated per method, template, kind, field and detail.
+Each JSON recording is matched to its `(method, template, status class)` family and diffed the same way live traffic is: fields added or removed, types changed, values outside the known set, a field arriving null, a status code moving within its class. Findings are deduplicated per method, template, kind, field and detail, and each carries the fingerprint `pikopod agent accept` takes.
+
+## Risk tiers
+
+A provider adding a field should not block a release. A type flip on `amount` must. Every finding is graded by what breaks consumers, and `--fail-on` sets the lowest tier that fails the build:
+
+| Risk | Kinds |
+|---|---|
+| `high` | `field_removed`, `type_changed`, `field_nullable`, `status_new`, `status_code_changed`, `error_shape_changed` |
+| `medium` | `enum_value_new` |
+| `low` | `field_added` |
+
+A finding the provider's new spec version documents drops one tier. The default is `medium`, so additive fields are accepted and everything else fails. Findings below the threshold are printed under `accepted` and never fail the gate:
 
 ```text
-examplepay: 37 recordings gated (1 pre-warmup skipped) — 2 finding(s)
-  DRIFT field_removed    GET /charges/{id}  refunded_at string
-  DRIFT type_changed     GET /charges/{id}  amount string
+examplepay: 37 recordings gated (0 pre-warmup skipped) — 1 finding(s) at or above medium, 1 accepted
+  DRIFT high   type_changed         GET /charges/ch_{id}  amount string  fp_5f4025d6b870
+accepted (below --fail-on medium):
+  DRIFT low    field_added          GET /charges/ch_{id}  fee_bearer string  fp_b9d1b2e5950b
 
 drift found — failing the gate (exit 1)
 ```
+
+`--fail-on low` fails on everything, `--fail-on high` only on removals, retypes and status changes:
+
+```text
+examplepay: 37 recordings gated (0 pre-warmup skipped) — 2 finding(s) at or above low, 0 accepted
+  DRIFT high   type_changed         GET /charges/ch_{id}  amount string  fp_5f4025d6b870
+  DRIFT low    field_added          GET /charges/ch_{id}  fee_bearer string  fp_b9d1b2e5950b
+
+drift found — failing the gate (exit 1)
+```
+
+A drift accepted with `pikopod agent accept <fingerprint>` is honoured here too: it is listed in its own `accepted` block, whatever its tier, and does not fail the gate. See [ack, accept, baseline](/reference/cli/ack-accept-baseline).
 
 ## What it skips
 
@@ -37,9 +62,9 @@ drift found — failing the gate (exit 1)
 
 | Exit | When |
 |---|---|
-| `0` | Every gated recording matched. |
-| `1` | Drift found. |
-| `2` | No baselines or no recordings for an upstream, which is a tool problem, never conflated with drift. |
+| `0` | Every gated recording matched, or every finding was below `--fail-on` or accepted. |
+| `1` | Drift at or above `--fail-on` found. |
+| `2` | No baselines or no recordings for an upstream, or an unknown `--fail-on` tier, which is a tool problem, never conflated with drift. |
 
 ## In CI
 
@@ -50,7 +75,7 @@ The gate needs the `data_dir` the agent wrote, or a copy of it. Ship the `baseli
 ./pikopod pr comment --handoff replay.json
 ```
 
-The handoff is `{"source":"replay-ci","records":n,"findings":[…]}`. See [CI integration](/gate/ci-integration).
+The handoff is `{"source":"replay-ci","records":n,"fail_on":"medium","findings":[…],"accepted":[…]}`; each finding carries `risk` and `fingerprint`, each accepted entry also `because`. `pr comment` renders the findings. See [CI integration](/gate/ci-integration).
 
 ## Recordings as scenarios
 

@@ -4,7 +4,7 @@ description: Gate builds offline on recorded traffic against frozen baselines.
 ---
 
 ```text
-pikopod agent replay --ci [upstreams...] [--handoff <path>]
+pikopod agent replay --ci [upstreams...] [--fail-on high|medium|low] [--handoff <path>]
 ```
 
 Diffs each recorded response against its frozen baseline, entirely offline. With no upstream named, every configured upstream is gated. `--ci` is required.
@@ -12,24 +12,33 @@ Diffs each recorded response against its frozen baseline, entirely offline. With
 | Flag | Meaning |
 |---|---|
 | `--ci` | The CI gate. |
-| `--handoff <path>` | Also write the JSON findings here, for `pikopod pr comment`. |
+| `--fail-on <tier>` | The lowest risk tier that fails the gate: `high`, `medium` or `low`. Default `medium`. Findings below it are printed under `accepted`. |
+| `--handoff <path>` | Also write the JSON findings and accepted entries here, for `pikopod pr comment`. |
+
+Every finding is graded `high` (removed, retyped, nullable, status changes, error shape), `medium` (a new enum value) or `low` (an added field); a finding the provider's spec documents drops one tier. A fingerprint accepted with `pikopod agent accept` is accepted here as well. See [Risk tiers](/observe/replay-gate#risk-tiers).
 
 ```text
-examplepay: 37 recordings gated (1 pre-warmup skipped) — 0 finding(s)
+examplepay: 37 recordings gated (0 pre-warmup skipped) — 0 finding(s) at or above medium, 0 accepted
 clean — no drift against frozen baselines
 ```
 
 ```text
-examplepay: 37 recordings gated (1 pre-warmup skipped) — 1 finding(s)
-  DRIFT field_removed    GET /charges/{id}  refunded_at string
+examplepay: 37 recordings gated (0 pre-warmup skipped) — 1 finding(s) at or above medium, 1 accepted
+  DRIFT high   type_changed         GET /charges/ch_{id}  amount string  fp_5f4025d6b870
+accepted (below --fail-on medium):
+  DRIFT low    field_added          GET /charges/ch_{id}  fee_bearer string  fp_b9d1b2e5950b
 
 drift found — failing the gate (exit 1)
 ```
 
+```text
+error: unknown risk tier severe: --fail-on takes high, medium or low → pass one of them; medium is the default → https://github.com/pikopod/pikopod/blob/main/docs/exit-codes.md
+```
+
 | Exit | When |
 |---|---|
-| `0` | Clean. |
-| `1` | Drift found. |
-| `2` | No baselines or no recordings for an upstream. |
+| `0` | Clean, or every finding below `--fail-on` or accepted. |
+| `1` | Drift at or above `--fail-on`. |
+| `2` | No baselines or no recordings for an upstream, or an unknown tier. |
 
 See [Replay gate](/observe/replay-gate).
