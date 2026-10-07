@@ -70,6 +70,37 @@ replaying POST /charges against a fork of examplepay (seed docs) — no real sta
 
 `livemode` is not in the spec. The provider sends it, so the sandbox now does too.
 
+## Identifiers across steps
+
+Every payments flow is create, poll, capture, refund by id, and in a recording the ids are tokens. A recorded `GET /charges/ch_663ul6` names the resource a recorded `POST /charges` created, and that create, replayed in the sandbox, stored the resource under its own key. So when a create is completed from a recording, the sandbox remembers that the recorded id now means the stored resource. A later request that carries the token in its path or body is rewritten to the store key before routing, and the stored resource answers, as the order above says it should. The response says how many ids were rewritten:
+
+```bash
+pikopod requests examplepay --explain GET /charges/ch_663ul6
+```
+
+```text
+replaying GET /charges/ch_663ul6 against a fork of examplepay (seed docs) — no real state is touched
+
+  auth       sending the issued credential in authorization
+  recordings recorded id ch_663ul6 in the path resolves to stored /charges/charges_1
+  faults     no armed fault fired
+  route      matched getCharge
+  auth       declared auth satisfied
+  operation  kind=read resource=/charges
+  recordings stored /charges/charges_1 answers before any recording
+  store      read /charges/charges_1 (version 0)
+
+→ 200
+  Content-Type: application/json; charset=utf-8
+  Etag: "0"
+  X-Pikopod-Id-Rewritten: 1
+  X-Pikopod-Operation: getCharge
+
+{"amount":1500,"currency":"usd","id":"charges_1","status":"success","livemode":false}
+```
+
+Only the request side moves. A recorded body that is served verbatim keeps its tokens. The memory holds the newest 4096 ids per sandbox, lives with the stored state so a restart, a snapshot and `requests --explain` all see it, and is cleared by a reset. A token the sandbox has not seen a create for is still served from the recording, as in the example above.
+
 ## Matching is hierarchical
 
 One clever hash would miss on real payment traffic where every request carries different amounts and references, so matching degrades in three steps:
@@ -91,6 +122,7 @@ A recorded `4xx` or `5xx` is served only on an exact match. A different body may
 | `x-pikopod-replay-missed-on` | Which fields kept the request from an exact match. |
 | `x-pikopod-replay-closest` | The closest recording considered on a miss. |
 | `x-pikopod-replay-sequence` | The position served from the sequence tier. |
+| `x-pikopod-id-rewritten` | How many recorded ids in the request's path or body were rewritten to store keys. See [Identifiers across steps](#identifiers-across-steps). |
 
 `requests --explain` notes every field a recording supplied with the source `recorded`:
 

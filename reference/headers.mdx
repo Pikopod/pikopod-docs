@@ -26,6 +26,7 @@ Everything else is forwarded unmodified. On the recording side, `Authorization`,
 | `x-pikopod-contract-version` | Response | The overlay version the response was rendered from. `0` when the sandbox serves the spec contract only. |
 | `X-Pikopod-Source` | Response | `recorded` when a recording answered or shaped the response. See [Precedence](/sandbox/precedence). |
 | `X-Pikopod-Replay-Tier` | Response | Set when a recording was served: `exact`, `shape` or `sequence`. See [Precedence](/sandbox/precedence). |
+| `X-Pikopod-Id-Rewritten` | Response | How many recorded ids in the request's path or body were rewritten to the store keys of the resources recorded creates produced. See [Identifiers across steps](/sandbox/precedence#identifiers-across-steps). |
 | `Link` | Response | Pagination links on list endpoints, with the sandbox's mount prefix. |
 
 Webhook deliveries carry the headers the provider's envelope declares. Without an envelope, deliveries carry the default `x-pikopod-webhook-*` headers and the signing secret printed at import. See [Webhooks](/sandbox/webhooks).
