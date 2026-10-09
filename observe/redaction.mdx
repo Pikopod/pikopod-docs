@@ -29,6 +29,24 @@ That is a deliberate trade. Dropping every unrecognised number would discard mos
 - **Paths and query strings.** Every path segment is classified; anything that is not plainly safe is tokenized, so `/charges/ch_8f3a91` becomes `/charges/ch_<token>` and still matches its template. Query values are classified, and query keys that look like identifiers are tokenized too.
 - **Map keys.** A JSON key that looks like an identifier or an email is tokenized as well, because pointers into the record persist and would leak it.
 
+## What never reaches disk at all
+
+Redaction decides what a record looks like. `record.exclude` decides whether there is a record. A request whose path matches one of the upstream's patterns is forwarded exactly as every other request, and then nothing else happens to it: no sanitized record, no drift or divergence observation, nothing in the recordings file. The agent only counts it:
+
+```yaml
+upstreams:
+  examplepay:
+    target: https://api.examplepay.com
+    record:
+      exclude: ["^/health", "^/kyc/documents"]
+```
+
+```json
+{"recordings_written": 1, "recordings_excluded": 2, "events_emitted": 1}
+```
+
+A 5xx or a 429 on an excluded path is still an incident, because the failure is a fact your dashboard should carry, but it has no recording and so cannot be reproduced; `reproduce` and `export` say so and name the key. `record.include` is the inverse: when set, only matching paths are recorded, and `exclude` still wins. See [Configuration](/operations/configuration#upstreams).
+
 ## What an imported contract changes
 
 When an upstream has an imported spec, a response field whose schema declares an `enum` keeps a value on disk only if that value is one of the declared members. `currency: NGN` survives because the provider published `[NGN, USD]`; the same field carrying `GHS` is classified exactly as it would be without the spec. Only enums stated in the spec or derived from it count. An enum a model extracted from prose unlocks nothing. Request bodies, headers and paths are untouched. `pikopod up` prints how many fields this applies to:

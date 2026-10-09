@@ -33,6 +33,18 @@ Names resolve to archetypes first, then to saved packs. Several can run in one c
 
 Each step line shows the step's status, key and summary. `NOT_EVALUATED` marks steps with no assertions of their own, such as arming or clearing a fault. When the sandbox has a webhook sink, a sink summary follows each scenario.
 
+A failed request step carries the request as one `curl` line, so the person who looks into it can send the same request to a running sandbox without reading the pack:
+
+```text
+✗ wrong-status — FAILED (expected response.status equals 503, got 201)
+    FAILED         create           expected response.status equals 503, got 201
+                                  curl -X POST "$PIKOPOD_URL/examplepay/charges" -H "authorization: Bearer $PIKOPOD_CREDENTIAL" -H 'content-type: application/json' -H 'idempotency-key: order-77' --data '{"amount":5000,"currency":"usd"}'
+
+1 scenario(s) failed — exit 1
+```
+
+`$PIKOPOD_URL` is the sandbox server, `http://127.0.0.1:4600` under `pikopod up`, and `$PIKOPOD_CREDENTIAL` the credential `sandbox list` prints. The credential itself never appears in the output. The same line ends every `requests --explain`, and an [incident bundle](/reference/incident-bundle) carries one built from the recording.
+
 ## Flags
 
 | Flag | Meaning |

@@ -64,6 +64,14 @@ Both fire on the first occurrence with no warmup. They are not reproduced with `
 
 An incident forces its recording to disk regardless of `sampling.rate`. Sampling it away would leave you with an alert pointing at something you cannot run.
 
+The one exception is a path under `record.exclude`. Its traffic never reaches disk in any form, so a 5xx there is alerted as a fact and nothing more. Reproducing it says exactly that, with the key to change:
+
+```text
+error: this incident was never recorded: /health matches upstreams.examplepay.record.exclude, so its traffic never reached disk; the 503 was alerted as a fact → drop the pattern from upstreams.examplepay.record.exclude (or add a record.include that names the path), let the failure recur, then reproduce that occurrence; or write the scenario by hand → https://github.com/pikopod/pikopod/blob/main/docs/config-reference.md#record
+```
+
+See [What never reaches disk at all](/observe/redaction#what-never-reaches-disk-at-all).
+
 ## Listing them
 
 ```bash

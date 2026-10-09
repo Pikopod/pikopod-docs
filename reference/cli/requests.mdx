@@ -76,7 +76,12 @@ pikopod requests examplepay --explain GET /charges --auth=false
 {"message":"Authentication required"}
 ```
 
-The path must be provider-relative and start with `/`. Bodies longer than 2000 characters are truncated in the output.
+The path must be provider-relative and start with `/`. Bodies longer than 2000 characters are truncated in the output. The output ends with the same request as a `curl` line against the running sandbox, with the credential as `$PIKOPOD_CREDENTIAL` and the base URL as `$PIKOPOD_URL`:
+
+```text
+send the same request to the running sandbox:
+  curl -X POST "$PIKOPOD_URL/examplepay/charges" -H "authorization: Bearer $PIKOPOD_CREDENTIAL" -H 'content-type: application/json' --data '{"amount":5000,"currency":"usd"}'
+```
 
 ## Old spellings
 

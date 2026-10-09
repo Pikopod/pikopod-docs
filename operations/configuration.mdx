@@ -59,6 +59,8 @@ upstreams:
       client_error_rate: 0.05
     webhooks:
       receiver: http://localhost:3000/hooks/examplepay
+    record:
+      exclude: ["^/health", "^/kyc/documents"]
 ```
 
 | Key | Default | Meaning |
@@ -71,6 +73,10 @@ upstreams:
 | `incidents.client_errors` | `false` | Capture 4xx as incidents. |
 | `incidents.client_error_rate` | `0.05` | Share of requests to one endpoint family that must be 4xx before one is reported. Below 20 requests no rate is claimed. |
 | `webhooks.receiver` | | Absolute URL of your webhook handler. The agent serves `/hooks/<name>`, forwards every delivery there untouched, records it redacted, and reports duplicates and out-of-order deliveries. Point the provider's webhook URL at the agent. Absent means no tap. See [Incidents](/observe/incidents#inbound-webhooks). |
+| `record.exclude` | | Regular expressions matched against the provider-relative request path, without the query string. A request that matches is forwarded as always but never recorded, even redacted, and never observed for drift or divergence. A 5xx or 429 on it is still an incident, with no recording behind it. Counted on `/healthz` as `recordings_excluded`. |
+| `record.include` | | Regular expressions; when set, only paths that match one are recorded. `exclude` wins over `include`. |
+
+Health checks and KYC document uploads are the usual reasons for `record.exclude`: the first is noise, the second must never reach disk in any form. A pattern that does not compile is a configuration error, exit `2`. See [What never reaches disk at all](/observe/redaction#what-never-reaches-disk-at-all).
 
 Upstream names may only contain letters, digits, `_` and `-`, because the name becomes a file path component under `data_dir`.
 

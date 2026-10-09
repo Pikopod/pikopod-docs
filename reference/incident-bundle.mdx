@@ -3,7 +3,7 @@ title: Incident bundle
 description: The self-contained file pikopod agent incidents export writes, and what reproduce and fix accept.
 ---
 
-A bundle carries one incident from the host that recorded it to any machine that will reproduce or fix it. It holds the event, the already-redacted recording and the contract version, and nothing else: no salt, no token, no configuration.
+A bundle carries one incident from the host that recorded it to any machine that will reproduce or fix it. It holds the event, the already-redacted recording, the contract version and a `curl` line built from that recording, and nothing else: no salt, no token, no configuration.
 
 ```json
 {
@@ -19,6 +19,9 @@ A bundle carries one incident from the host that recorded it to any machine that
     "key": "ch_1ae9go",
     "attributes": { "amount": 5000, "currency": "usd", "id": "ch_1ae9go", "status": "pending" },
     "state": "pending"
+  },
+  "reproduce": {
+    "curl": "curl -X POST \"$PIKOPOD_URL/examplepay/refunds\" -H 'accept: */*' -H \"authorization: $PIKOPOD_CREDENTIAL\" -H 'content-type: application/json' --data '{\"amount\":5000,\"charge\":\"ch_51vtwszb\",\"reason\":\"requested_by_customer\"}'"
   }
 }
 ```
@@ -33,6 +36,7 @@ A bundle carries one incident from the host that recorded it to any machine that
 | `recording` | The sanitized exchange: method, path, status, redacted headers and bodies. |
 | `contract_version` | The overlay version at the time of the incident, so the reproduction runs at the same contract. `0` when there is no overlay. |
 | `state` | Optional. The resource the recording touched, as the agent last saw it: its collection (`type`), its key (a token), its redacted `attributes` from the most recent successful response for that path, and its `state` when the attributes carry a `status` or `state` string. Present only for a route with a path parameter and only when such a response exists. `import` seeds it and conditions the rule on it. |
+| `reproduce.curl` | The recorded request as one `curl` line against the sandbox, built from the sanitized recording only: identifiers are the tokens on disk, the credential header is `$PIKOPOD_CREDENTIAL`, the base URL is `$PIKOPOD_URL`. Set the two variables and the line sends the incident's request to the sandbox the person fixing it is running. When the recording redacted the whole header value, the placeholder stands for the whole value, scheme included. |
 
 ## Producing one
 
