@@ -45,6 +45,37 @@ pikopod is a single static binary built with `CGO_ENABLED=0`. It has no dependen
   </Tab>
 </Tabs>
 
+## Shell completion
+
+Run the one-liner for your shell to enable completion in the current session:
+
+Bash:
+
+```bash
+source <(pikopod completion bash)
+```
+
+Zsh (run `autoload -Uz compinit && compinit` first if completion is not initialized):
+
+```zsh
+source <(pikopod completion zsh)
+```
+
+Fish:
+
+```fish
+pikopod completion fish | source
+```
+
+PowerShell:
+
+```powershell
+pikopod completion powershell | Out-String | Invoke-Expression
+```
+
+To enable completion in future sessions, add the line to `~/.bashrc`,
+`~/.zshrc`, `~/.config/fish/config.fish`, or your PowerShell `$PROFILE`, respectively.
+
 ## Verify a release
 
 Every release ships `SHA256SUMS`, signed with cosign, with SLSA provenance. This is the canonical verification command. It lives in one place on purpose: a copy that drifts out of case or loses its anchor still runs and still passes.
